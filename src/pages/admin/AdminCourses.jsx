@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { listAllCourses, createCourse, deleteCourse } from '../../lib/courses.js';
 import { formatMoney } from '../../lib/format.js';
 import Spinner from '../../components/Spinner.jsx';
+import FileUploader from '../../components/FileUploader.jsx';
 
 export default function AdminCourses() {
   const [items, setItems] = useState(null);
@@ -155,8 +156,16 @@ function NewCourseModal({ onClose, onSubmit }) {
             <input value={form.instructorName} onChange={(e) => setForm((s) => ({ ...s, instructorName: e.target.value }))} className="input" />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Cover image URL</label>
-            <input value={form.coverImageUrl} onChange={(e) => setForm((s) => ({ ...s, coverImageUrl: e.target.value }))} className="input" placeholder="https://..." />
+            <FileUploader
+              label="Cover image"
+              accept="image"
+              folder="courseAssets/_drafts"
+              resourceType="image"
+              currentUrl={form.coverImageUrl}
+              onUploaded={({ url }) => setForm((s) => ({ ...s, coverImageUrl: url }))}
+              onClear={() => setForm((s) => ({ ...s, coverImageUrl: '' }))}
+              helperText="Recommended 1280×720 · JPG/PNG · max 10MB"
+            />
           </div>
           <div className="sm:col-span-2">
             <label className="label">Short description</label>
