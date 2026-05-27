@@ -5,6 +5,8 @@ import {
   getCourse, updateCourse, listLessons, createLesson, updateLesson, deleteLesson,
   getQuiz, upsertQuiz
 } from '../../lib/courses.js';
+import FileUploader from '../../components/FileUploader.jsx';
+import Icon from '../../components/Icon.jsx';
 import Spinner from '../../components/Spinner.jsx';
 
 export default function AdminCourseEditor() {
@@ -27,9 +29,11 @@ export default function AdminCourseEditor() {
   return (
     <div>
       <div className="mb-2">
-        <Link to="/admin/courses" className="text-sm text-gray-500">← All courses</Link>
+        <Link to="/admin/courses" className="text-sm text-ink-500 hover:text-ink-800 inline-flex items-center gap-1">
+          <Icon name="arrow-right" size={14} className="rotate-180" /> All courses
+        </Link>
       </div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="text-2xl font-display font-bold">{course.title}</h1>
         <button
           onClick={async () => {
@@ -39,20 +43,24 @@ export default function AdminCourseEditor() {
           }}
           className={course.isPublished ? 'btn-secondary' : 'btn-primary'}
         >
+          <Icon name={course.isPublished ? 'lock' : 'sparkles'} size={16} />
           {course.isPublished ? 'Unpublish' : 'Publish course'}
         </button>
       </div>
 
-      <div className="flex gap-2 border-b mb-6">
-        {['details', 'lessons'].map((t) => (
+      <div className="flex gap-1 border-b border-ink-100 mb-6">
+        {[
+          { id: 'details', label: 'Details', icon: 'book-open' },
+          { id: 'lessons', label: 'Lessons & quizzes', icon: 'video' }
+        ].map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-              tab === t ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-600 hover:text-gray-900'
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px inline-flex items-center gap-2 ${
+              tab === t.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-600 hover:text-ink-900'
             }`}
           >
-            {t === 'details' ? 'Details' : 'Lessons & quizzes'}
+            <Icon name={t.icon} size={16} />{t.label}
           </button>
         ))}
       </div>
@@ -110,57 +118,67 @@ function CourseDetailsForm({ course, onSave }) {
   }
 
   return (
-    <form onSubmit={handleSave} className="card p-6 space-y-3 grid sm:grid-cols-2 gap-3">
-      <div className="sm:col-span-2">
-        <label className="label">Title</label>
-        <input className="input" value={form.title} onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))} />
+    <form onSubmit={handleSave} className="card p-6 space-y-4">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <label className="label">Title</label>
+          <input className="input" value={form.title} onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))} />
+        </div>
+        <div>
+          <label className="label">Category</label>
+          <input className="input" value={form.category} onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))} />
+        </div>
+        <div>
+          <label className="label">Mode</label>
+          <select className="input" value={form.mode} onChange={(e) => setForm((s) => ({ ...s, mode: e.target.value }))}>
+            <option value="self_paced">Self-paced</option>
+            <option value="live">Live class</option>
+          </select>
+        </div>
+        <div>
+          <label className="label">Price</label>
+          <input type="number" step="0.01" className="input" value={form.price} onChange={(e) => setForm((s) => ({ ...s, price: e.target.value }))} />
+        </div>
+        <div>
+          <label className="label">Currency</label>
+          <input className="input" value={form.currency} onChange={(e) => setForm((s) => ({ ...s, currency: e.target.value.toUpperCase() }))} />
+        </div>
+        <div>
+          <label className="label">Duration (hours)</label>
+          <input type="number" className="input" value={form.durationHours} onChange={(e) => setForm((s) => ({ ...s, durationHours: e.target.value }))} />
+        </div>
+        <div>
+          <label className="label">Instructor</label>
+          <input className="input" value={form.instructorName} onChange={(e) => setForm((s) => ({ ...s, instructorName: e.target.value }))} />
+        </div>
+        <div className="sm:col-span-2">
+          <FileUploader
+            label="Cover image"
+            accept="image"
+            folder={`courseAssets/${course.id}`}
+            resourceType="image"
+            currentUrl={form.coverImageUrl}
+            onUploaded={({ url }) => setForm((s) => ({ ...s, coverImageUrl: url }))}
+            onClear={() => setForm((s) => ({ ...s, coverImageUrl: '' }))}
+            helperText="Recommended 1280×720 · max 10MB"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Short description</label>
+          <input className="input" value={form.shortDescription} onChange={(e) => setForm((s) => ({ ...s, shortDescription: e.target.value }))} placeholder="One sentence pitch" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Full description</label>
+          <textarea rows={5} className="input" value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Learning outcomes (one per line)</label>
+          <textarea rows={4} className="input" value={form.learningOutcomes} onChange={(e) => setForm((s) => ({ ...s, learningOutcomes: e.target.value }))} />
+        </div>
       </div>
-      <div>
-        <label className="label">Category</label>
-        <input className="input" value={form.category} onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))} />
-      </div>
-      <div>
-        <label className="label">Mode</label>
-        <select className="input" value={form.mode} onChange={(e) => setForm((s) => ({ ...s, mode: e.target.value }))}>
-          <option value="self_paced">Self-paced</option>
-          <option value="live">Live class</option>
-        </select>
-      </div>
-      <div>
-        <label className="label">Price</label>
-        <input type="number" step="0.01" className="input" value={form.price} onChange={(e) => setForm((s) => ({ ...s, price: e.target.value }))} />
-      </div>
-      <div>
-        <label className="label">Currency</label>
-        <input className="input" value={form.currency} onChange={(e) => setForm((s) => ({ ...s, currency: e.target.value.toUpperCase() }))} />
-      </div>
-      <div>
-        <label className="label">Duration (hours)</label>
-        <input type="number" className="input" value={form.durationHours} onChange={(e) => setForm((s) => ({ ...s, durationHours: e.target.value }))} />
-      </div>
-      <div>
-        <label className="label">Instructor</label>
-        <input className="input" value={form.instructorName} onChange={(e) => setForm((s) => ({ ...s, instructorName: e.target.value }))} />
-      </div>
-      <div className="sm:col-span-2">
-        <label className="label">Cover image URL</label>
-        <input className="input" value={form.coverImageUrl} onChange={(e) => setForm((s) => ({ ...s, coverImageUrl: e.target.value }))} />
-      </div>
-      <div className="sm:col-span-2">
-        <label className="label">Short description</label>
-        <input className="input" value={form.shortDescription} onChange={(e) => setForm((s) => ({ ...s, shortDescription: e.target.value }))} />
-      </div>
-      <div className="sm:col-span-2">
-        <label className="label">Full description</label>
-        <textarea rows={5} className="input" value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} />
-      </div>
-      <div className="sm:col-span-2">
-        <label className="label">Learning outcomes (one per line)</label>
-        <textarea rows={4} className="input" value={form.learningOutcomes} onChange={(e) => setForm((s) => ({ ...s, learningOutcomes: e.target.value }))} />
-      </div>
-      <div className="sm:col-span-2">
-        <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : 'Save changes'}</button>
-      </div>
+      <button disabled={busy} className="btn-primary">
+        <Icon name="check" size={16} />{busy ? 'Saving…' : 'Save changes'}
+      </button>
     </form>
   );
 }
@@ -173,8 +191,10 @@ function LessonsManager({ courseId, lessons, onChange }) {
   async function handleSaveLesson(form) {
     const payload = {
       title: form.title,
-      description: form.description,
+      bodyText: form.bodyText,
       videoUrl: form.videoUrl,
+      videoIsUpload: form.videoIsUpload,
+      resources: form.resources,
       durationMinutes: Number(form.durationMinutes) || null,
       orderIndex: Number(form.orderIndex) || 0
     };
@@ -214,28 +234,40 @@ function LessonsManager({ courseId, lessons, onChange }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">{lessons.length} lessons</h2>
-        <button onClick={() => { setEditingLesson(null); setShowLessonForm(true); }} className="btn-primary">+ Add lesson</button>
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <h2 className="text-lg font-semibold">{lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'}</h2>
+        <button onClick={() => { setEditingLesson(null); setShowLessonForm(true); }} className="btn-primary">
+          <Icon name="sparkles" size={16} />Add lesson
+        </button>
       </div>
 
       {lessons.length === 0 ? (
-        <div className="card p-8 text-center text-gray-500">No lessons yet.</div>
+        <div className="card p-10 text-center">
+          <div className="icon-tile w-14 h-14 mx-auto bg-brand-50 text-brand-600 mb-4">
+            <Icon name="video" size={24} />
+          </div>
+          <p className="text-ink-600">No lessons yet. Add your first lesson to get started.</p>
+        </div>
       ) : (
-        <div className="card divide-y">
+        <div className="card divide-y divide-ink-100">
           {lessons.map((l, i) => (
-            <div key={l.id} className="p-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 grid place-items-center text-sm font-semibold">{i + 1}</span>
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{l.title}</p>
-                  <p className="text-xs text-gray-500 truncate">{l.videoUrl || '— no video —'}</p>
+            <div key={l.id} className="p-4 flex items-center justify-between gap-3 hover:bg-ink-50/50 transition">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span className="w-9 h-9 rounded-lg bg-brand-100 text-brand-700 grid place-items-center text-sm font-bold flex-shrink-0">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink-900 truncate">{l.title}</p>
+                  <div className="flex items-center gap-3 text-xs text-ink-500 mt-0.5 flex-wrap">
+                    {l.videoUrl && <span className="inline-flex items-center gap-1"><Icon name="video" size={12} />Video</span>}
+                    {l.bodyText && <span className="inline-flex items-center gap-1"><Icon name="book-open" size={12} />Notes</span>}
+                    {l.resources?.length > 0 && <span className="inline-flex items-center gap-1"><Icon name="book-open" size={12} />{l.resources.length} resource{l.resources.length !== 1 ? 's' : ''}</span>}
+                    {l.durationMinutes && <span className="inline-flex items-center gap-1"><Icon name="clock" size={12} />{l.durationMinutes} min</span>}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <button onClick={() => openQuizFor(l)} className="text-brand-700 hover:underline">Quiz</button>
-                <button onClick={() => { setEditingLesson(l); setShowLessonForm(true); }} className="text-gray-700 hover:underline">Edit</button>
-                <button onClick={() => handleDeleteLesson(l)} className="text-red-600 hover:underline">Delete</button>
+              <div className="flex items-center gap-1 text-sm">
+                <button onClick={() => openQuizFor(l)} className="px-3 py-1.5 rounded-md text-brand-700 hover:bg-brand-50 font-medium">Quiz</button>
+                <button onClick={() => { setEditingLesson(l); setShowLessonForm(true); }} className="px-3 py-1.5 rounded-md text-ink-700 hover:bg-ink-100 font-medium">Edit</button>
+                <button onClick={() => handleDeleteLesson(l)} className="px-3 py-1.5 rounded-md text-red-600 hover:bg-red-50 font-medium">Delete</button>
               </div>
             </div>
           ))}
@@ -244,6 +276,7 @@ function LessonsManager({ courseId, lessons, onChange }) {
 
       {showLessonForm && (
         <LessonForm
+          courseId={courseId}
           lesson={editingLesson}
           defaultOrder={lessons.length + 1}
           onClose={() => { setShowLessonForm(false); setEditingLesson(null); }}
@@ -262,30 +295,45 @@ function LessonsManager({ courseId, lessons, onChange }) {
   );
 }
 
-function LessonForm({ lesson, defaultOrder, onClose, onSubmit }) {
+function LessonForm({ courseId, lesson, defaultOrder, onClose, onSubmit }) {
   const [form, setForm] = useState({
     title: lesson?.title || '',
-    description: lesson?.description || '',
+    bodyText: lesson?.bodyText || '',
     videoUrl: lesson?.videoUrl || '',
+    videoIsUpload: lesson?.videoIsUpload || false,
+    resources: lesson?.resources || [],
     durationMinutes: lesson?.durationMinutes || '',
     orderIndex: lesson?.orderIndex ?? defaultOrder
   });
+  const [videoMode, setVideoMode] = useState(lesson?.videoIsUpload ? 'upload' : 'embed');
+
+  function addResource({ url, name, sizeBytes, type }) {
+    setForm((s) => ({
+      ...s,
+      resources: [...(s.resources || []), { url, name, sizeBytes, type, kind: type?.startsWith('image/') ? 'image' : 'pdf' }]
+    }));
+  }
+  function removeResource(idx) {
+    setForm((s) => ({ ...s, resources: s.resources.filter((_, i) => i !== idx) }));
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/50 grid place-items-center p-4 z-40" onClick={onClose}>
+    <div className="fixed inset-0 bg-ink-950/60 backdrop-blur-sm grid place-items-center p-4 z-40 overflow-auto animate-fade-in" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => { e.preventDefault(); onSubmit(form); }}
-        className="card max-w-lg w-full p-6 space-y-3"
+        className="card max-w-2xl w-full p-6 my-8 space-y-5 animate-slide-up"
       >
-        <h3 className="text-lg font-display font-bold">{lesson ? 'Edit lesson' : 'New lesson'}</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-display font-bold">{lesson ? 'Edit lesson' : 'New lesson'}</h3>
+          <button type="button" onClick={onClose} className="p-1.5 hover:bg-ink-100 rounded-lg"><Icon name="x" size={18} /></button>
+        </div>
+
         <div>
-          <label className="label">Title</label>
+          <label className="label">Lesson title</label>
           <input required className="input" value={form.title} onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))} />
         </div>
-        <div>
-          <label className="label">YouTube / Vimeo URL</label>
-          <input className="input" value={form.videoUrl} onChange={(e) => setForm((s) => ({ ...s, videoUrl: e.target.value }))} placeholder="https://www.youtube.com/watch?v=..." />
-        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Order</label>
@@ -296,13 +344,92 @@ function LessonForm({ lesson, defaultOrder, onClose, onSubmit }) {
             <input type="number" className="input" value={form.durationMinutes} onChange={(e) => setForm((s) => ({ ...s, durationMinutes: e.target.value }))} />
           </div>
         </div>
+
+        {/* VIDEO SECTION */}
         <div>
-          <label className="label">Description / notes</label>
-          <textarea rows={4} className="input" value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} />
+          <label className="label">Video</label>
+          <div className="flex gap-1 p-1 bg-ink-100 rounded-lg mb-3">
+            <button
+              type="button"
+              onClick={() => setVideoMode('embed')}
+              className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${videoMode === 'embed' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600'}`}
+            >
+              YouTube / Vimeo URL
+            </button>
+            <button
+              type="button"
+              onClick={() => setVideoMode('upload')}
+              className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${videoMode === 'upload' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600'}`}
+            >
+              Upload video file
+            </button>
+          </div>
+          {videoMode === 'embed' ? (
+            <input
+              className="input"
+              value={form.videoIsUpload ? '' : form.videoUrl}
+              onChange={(e) => setForm((s) => ({ ...s, videoUrl: e.target.value, videoIsUpload: false }))}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+          ) : (
+            <FileUploader
+              accept="video"
+              folder={`courseAssets/${courseId}/lessons`}
+              resourceType="video"
+              currentUrl={form.videoIsUpload ? form.videoUrl : ''}
+              onUploaded={({ url }) => setForm((s) => ({ ...s, videoUrl: url, videoIsUpload: true }))}
+              onClear={() => setForm((s) => ({ ...s, videoUrl: '', videoIsUpload: false }))}
+              helperText="MP4 / WebM · max 100MB · streamed via Cloudinary"
+            />
+          )}
         </div>
-        <div className="flex gap-2 pt-2">
+
+        {/* TEXT BODY */}
+        <div>
+          <label className="label">Lesson notes / text content (optional)</label>
+          <textarea
+            rows={6}
+            className="input font-mono text-sm"
+            value={form.bodyText}
+            onChange={(e) => setForm((s) => ({ ...s, bodyText: e.target.value }))}
+            placeholder="Write or paste the lesson notes here. Plain text or simple Markdown — line breaks are preserved."
+          />
+        </div>
+
+        {/* RESOURCES */}
+        <div>
+          <label className="label">Downloadable resources (PDFs, images)</label>
+          {form.resources?.length > 0 && (
+            <ul className="space-y-2 mb-3">
+              {form.resources.map((r, i) => (
+                <li key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-ink-200 bg-ink-50">
+                  <div className="icon-tile w-9 h-9 bg-white text-brand-700">
+                    <Icon name={r.kind === 'image' ? 'sparkles' : 'book-open'} size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{r.name}</p>
+                    <p className="text-xs text-ink-500">{(r.sizeBytes / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                  <a href={r.url} target="_blank" rel="noreferrer" className="text-xs text-brand-700 hover:underline">View</a>
+                  <button type="button" onClick={() => removeResource(i)} className="text-xs text-red-600 hover:underline">Remove</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <FileUploader
+            accept="pdf"
+            folder={`courseAssets/${courseId}/resources`}
+            resourceType="auto"
+            onUploaded={addResource}
+            helperText="PDF · max 25MB. Add as many as you need."
+          />
+        </div>
+
+        <div className="flex gap-2 pt-2 border-t border-ink-100">
           <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-          <button type="submit" className="btn-primary flex-1">Save lesson</button>
+          <button type="submit" className="btn-primary flex-1">
+            <Icon name="check" size={16} />Save lesson
+          </button>
         </div>
       </form>
     </div>
@@ -333,9 +460,12 @@ function QuizEditor({ lesson, quiz, onClose, onSubmit }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 grid place-items-center p-4 z-40 overflow-auto" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="card max-w-2xl w-full p-6 my-8 space-y-4">
-        <h3 className="text-lg font-display font-bold">Quiz for: {lesson.title}</h3>
+    <div className="fixed inset-0 bg-ink-950/60 backdrop-blur-sm grid place-items-center p-4 z-40 overflow-auto animate-fade-in" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="card max-w-2xl w-full p-6 my-8 space-y-4 animate-slide-up">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-display font-bold">Quiz · {lesson.title}</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-ink-100 rounded-lg"><Icon name="x" size={18} /></button>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Quiz title</label>
@@ -346,12 +476,12 @@ function QuizEditor({ lesson, quiz, onClose, onSubmit }) {
             <input type="number" className="input" value={passScore} onChange={(e) => setPassScore(e.target.value)} />
           </div>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[50vh] overflow-y-auto">
           {questions.map((q, qi) => (
-            <div key={qi} className="border rounded-lg p-3 space-y-2 bg-gray-50">
+            <div key={qi} className="border border-ink-200 rounded-xl p-4 space-y-2 bg-ink-50">
               <div className="flex justify-between items-center">
-                <p className="font-medium text-sm">Question {qi + 1}</p>
-                <button onClick={() => removeQuestion(qi)} className="text-red-600 text-sm">Remove</button>
+                <p className="font-semibold text-sm">Question {qi + 1}</p>
+                <button onClick={() => removeQuestion(qi)} className="text-red-600 text-xs hover:underline">Remove</button>
               </div>
               <input
                 className="input"
@@ -366,6 +496,7 @@ function QuizEditor({ lesson, quiz, onClose, onSubmit }) {
                     name={`correct-${qi}`}
                     checked={q.correctOptionIndex === oi}
                     onChange={() => updateQuestion(qi, { correctOptionIndex: oi })}
+                    className="text-brand-600 w-4 h-4"
                   />
                   <input
                     className="input flex-1"
@@ -378,10 +509,14 @@ function QuizEditor({ lesson, quiz, onClose, onSubmit }) {
             </div>
           ))}
         </div>
-        <button onClick={addQuestion} className="btn-secondary w-full">+ Add question</button>
-        <div className="flex gap-2 pt-2">
+        <button onClick={addQuestion} className="btn-secondary w-full">
+          <Icon name="sparkles" size={16} />Add question
+        </button>
+        <div className="flex gap-2 pt-2 border-t border-ink-100">
           <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-          <button onClick={() => onSubmit({ title, passScore, questions })} className="btn-primary flex-1">Save quiz</button>
+          <button onClick={() => onSubmit({ title, passScore, questions })} className="btn-primary flex-1">
+            <Icon name="check" size={16} />Save quiz
+          </button>
         </div>
       </div>
     </div>
