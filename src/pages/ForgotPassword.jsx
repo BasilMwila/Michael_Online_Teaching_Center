@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext.jsx';
+import Icon from '../components/Icon.jsx';
 
 export default function ForgotPassword() {
   const { resetPassword } = useAuth();
@@ -30,7 +31,7 @@ export default function ForgotPassword() {
         <p className="text-sm text-gray-600 mb-6">Enter your email and we'll send you a reset link.</p>
         {sent ? (
           <div className="text-center py-6">
-            <p className="text-5xl mb-3">📬</p>
+            <div className="icon-tile w-16 h-16 mx-auto bg-brand-50 text-brand-700 mb-4"><Icon name="mail" size={28} /></div>
             <p className="text-gray-700">Check your inbox for a password reset link.</p>
           </div>
         ) : (

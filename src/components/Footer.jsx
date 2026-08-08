@@ -27,17 +27,23 @@ export default function Footer() {
   const supportWA = import.meta.env.VITE_SUPPORT_WHATSAPP || '+000 000 0000';
 
   return (
-    <footer className="bg-ink-950 text-ink-200 relative overflow-hidden mt-20">
+    <footer className="mt-20">
+      {/* Letterhead angled bars: short navy + long gold */}
+      <div className="flex items-stretch gap-2 h-2.5 mb-1.5" aria-hidden="true">
+        <div className="w-[16%] min-w-[90px] bg-brand-900" style={{ clipPath: 'polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%)' }} />
+        <div className="flex-1 bg-accent-500" style={{ clipPath: 'polygon(10px 0, 100% 0, 100% 100%, 0 100%)' }} />
+      </div>
+      <div className="bg-brand-950 text-ink-200 relative overflow-hidden">
       <div className="absolute inset-0 bg-mesh-dark opacity-50" />
       <div className="relative max-w-7xl mx-auto container-px py-16 grid gap-10 md:grid-cols-4">
         <div className="md:col-span-2">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 grid place-items-center">
-              <Icon name="graduation-cap" size={22} className="text-white" strokeWidth={2.2} />
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-white rounded-lg p-1.5">
+              <img src="/logo-light.png" alt="ESA logo" className="h-11 w-auto" />
             </div>
             <div>
               <p className="font-display font-bold text-white text-lg leading-tight">Empire Skills</p>
-              <p className="text-[10px] text-ink-400 tracking-wider font-medium uppercase">Training Center</p>
+              <p className="text-[10px] text-accent-400 tracking-wider font-semibold uppercase">Never Stop Growing</p>
             </div>
           </div>
           <p className="text-sm text-ink-400 max-w-md leading-relaxed">
@@ -99,10 +105,11 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto container-px text-xs text-ink-400 flex flex-col sm:flex-row justify-between gap-2">
           <p>© {new Date().getFullYear()} Empire Skills Training Center. All rights reserved.</p>
           <p className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-400 animate-pulse" />
             All systems operational
           </p>
         </div>
+      </div>
       </div>
     </footer>
   );

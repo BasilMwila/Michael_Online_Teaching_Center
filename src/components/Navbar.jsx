@@ -39,15 +39,10 @@ export default function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto container-px h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="relative">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 grid place-items-center shadow-soft group-hover:shadow-glow transition-shadow">
-              <Icon name="graduation-cap" size={20} className="text-white" strokeWidth={2.2} />
-            </div>
-            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent-400" />
-          </div>
+          <img src="/logo-light.png" alt="ESA logo" className="h-11 w-auto" />
           <div className="hidden sm:block">
-            <p className="font-display font-bold text-ink-900 leading-tight">Empire Skills</p>
-            <p className="text-[10px] text-ink-400 leading-tight tracking-wider font-medium uppercase">Training Center</p>
+            <p className="font-display font-bold text-brand-900 leading-tight">Empire Skills</p>
+            <p className="text-[10px] text-accent-600 leading-tight tracking-wider font-semibold uppercase">Never Stop Growing</p>
           </div>
         </Link>
 
@@ -130,6 +125,12 @@ export default function Navbar() {
         >
           <Icon name={open ? 'x' : 'menu'} size={22} />
         </button>
+      </div>
+
+      {/* Letterhead two-tone rule: long gold line meeting navy */}
+      <div className="flex h-[3px]" aria-hidden="true">
+        <div className="w-[78%] bg-accent-500" />
+        <div className="flex-1 bg-brand-900" />
       </div>
 
       {open && (

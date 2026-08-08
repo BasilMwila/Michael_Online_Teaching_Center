@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { submitPayment } from '../../lib/payments.js';
 import { formatMoney } from '../../lib/format.js';
 import Spinner from '../../components/Spinner.jsx';
+import Icon from '../../components/Icon.jsx';
 
 export default function PayCourse() {
   const { enrollmentId } = useParams();
@@ -36,7 +37,7 @@ export default function PayCourse() {
   if (enrollment.status === 'active') {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center">
-        <p className="text-5xl mb-4">✅</p>
+        <div className="icon-tile w-16 h-16 mx-auto bg-emerald-100 text-emerald-700 mb-4"><Icon name="check" size={28} strokeWidth={2.5} /></div>
         <h2 className="text-2xl font-bold mb-2">Payment already confirmed</h2>
         <Link to={`/learn/${enrollment.courseId}`} className="btn-primary">Start learning</Link>
       </div>

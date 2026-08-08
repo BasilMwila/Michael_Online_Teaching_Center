@@ -27,7 +27,7 @@ export default function Home() {
   return (
     <div className="overflow-hidden">
       {/* HERO */}
-      <section className="relative bg-ink-950 text-white overflow-hidden">
+      <section className="relative bg-brand-950 text-white overflow-hidden">
         <div className="absolute inset-0 bg-mesh-dark" />
         <div className="absolute inset-0 pattern-grid opacity-50" />
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-brand-500/20 blur-3xl" />
@@ -36,7 +36,7 @@ export default function Home() {
         <div className="relative max-w-7xl mx-auto container-px pt-20 pb-24 sm:pt-28 sm:pb-32 grid lg:grid-cols-2 gap-12 items-center">
           <div className="animate-slide-up">
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur text-xs font-semibold text-brand-100">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-400 animate-pulse" />
               ACCREDITED ONLINE TRAINING
             </span>
             <h1 className="mt-5 text-5xl sm:text-6xl lg:text-7xl font-display font-extrabold leading-[1.05]">

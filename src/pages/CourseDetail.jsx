@@ -6,6 +6,7 @@ import { applyForCourse, getEnrollmentForCourse } from '../lib/enrollments.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatMoney } from '../lib/format.js';
 import Spinner from '../components/Spinner.jsx';
+import Icon from '../components/Icon.jsx';
 
 export default function CourseDetail() {
   const { courseId } = useParams();
@@ -86,9 +87,9 @@ export default function CourseDetail() {
             <h1 className="text-3xl sm:text-4xl font-display font-bold mb-4">{course.title}</h1>
             <p className="text-lg text-brand-50/90 max-w-2xl">{course.shortDescription || course.description}</p>
             <div className="mt-6 flex flex-wrap gap-6 text-sm text-brand-100">
-              {course.instructorName && <span>👤 {course.instructorName}</span>}
-              {course.durationHours && <span>⏱ {course.durationHours} hours</span>}
-              <span>📚 {lessons.length} lessons</span>
+              {course.instructorName && <span className="inline-flex items-center gap-1.5"><Icon name="users" size={14} />{course.instructorName}</span>}
+              {course.durationHours && <span className="inline-flex items-center gap-1.5"><Icon name="clock" size={14} />{course.durationHours} hours</span>}
+              <span className="inline-flex items-center gap-1.5"><Icon name="book-open" size={14} />{lessons.length} lessons</span>
             </div>
           </div>
           <aside className="card text-gray-900 p-6 h-fit">
@@ -150,7 +151,7 @@ export default function CourseDetail() {
                         {l.durationMinutes && <p className="text-xs text-gray-500">{l.durationMinutes} min</p>}
                       </div>
                     </div>
-                    {!isActive && <span className="text-xs text-gray-400">🔒</span>}
+                    {!isActive && <Icon name="lock" size={14} className="text-gray-400" />}
                   </li>
                 ))}
               </ol>

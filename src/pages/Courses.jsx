@@ -5,6 +5,7 @@ import { formatMoney } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Spinner from '../components/Spinner.jsx';
 import Empty from '../components/Empty.jsx';
+import Icon from '../components/Icon.jsx';
 
 export default function Courses() {
   const [courses, setCourses] = useState(null);
@@ -65,7 +66,7 @@ export default function Courses() {
                 <div className="aspect-video bg-gradient-to-br from-brand-100 to-brand-300 grid place-items-center text-brand-700 text-5xl">
                   {c.coverImageUrl ? (
                     <img src={c.coverImageUrl} alt={c.title} className="w-full h-full object-cover" />
-                  ) : '🎓'}
+                  ) : <Icon name="graduation-cap" size={48} strokeWidth={1.5} />}
                 </div>
                 <div className="p-5">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
