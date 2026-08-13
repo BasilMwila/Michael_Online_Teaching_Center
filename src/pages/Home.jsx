@@ -123,8 +123,52 @@ export default function Home() {
         </div>
       </section>
 
+      {/* VIDEO TESTIMONIAL */}
+      <section className="bg-brand-950 relative overflow-hidden border-t-4 border-accent-500">
+        <div className="absolute inset-0 bg-mesh-dark opacity-60" />
+        <div className="absolute inset-0 pattern-dots opacity-20" />
+        <div className="relative max-w-7xl mx-auto container-px py-16 grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+          <div className="order-2 lg:order-1 text-center lg:text-left">
+            <p className="text-sm font-semibold text-accent-400 uppercase tracking-wider">In their own words</p>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-display font-bold text-white">Hear from a student</h2>
+            <p className="mt-4 text-ink-200 text-lg leading-relaxed max-w-lg mx-auto lg:mx-0">
+              Real feedback from someone who trained with Empire Skills — unscripted, in their own voice.
+            </p>
+            <div className="mt-6 flex gap-0.5 text-accent-400 justify-center lg:justify-start">
+              {[1, 2, 3, 4, 5].map((i) => <Icon key={i} name="star" size={18} />)}
+            </div>
+            <div className="mt-8 flex flex-wrap gap-3 justify-center lg:justify-start">
+              <Link to="/testimonials" className="btn-white">
+                Read more stories
+                <Icon name="arrow-right" size={18} />
+              </Link>
+              <Link to="/courses" className="btn bg-white/10 backdrop-blur text-white border border-white/20 hover:bg-white/15">
+                Browse courses
+              </Link>
+            </div>
+          </div>
+
+          <div className="order-1 lg:order-2 flex justify-center">
+            <div className="relative w-full max-w-[300px]">
+              <div className="absolute -inset-3 rounded-[2.5rem] bg-gradient-to-br from-accent-400/40 via-transparent to-brand-400/30 blur-xl" />
+              <video
+                src="https://res.cloudinary.com/dhx7e5lt7/video/upload/testimonials/es6esn6ksftkcyxatgbv.mp4"
+                poster="https://res.cloudinary.com/dhx7e5lt7/video/upload/so_1/testimonials/es6esn6ksftkcyxatgbv.jpg"
+                className="relative w-full rounded-[2rem] border-4 border-white/10 shadow-lift bg-black"
+                controls
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FEATURES */}
-      <section className="relative -mt-12 z-10 max-w-7xl mx-auto container-px">
+      <section className="relative z-10 max-w-7xl mx-auto container-px">
         <div className="text-center mb-12 mt-12">
           <p className="text-sm font-semibold text-brand-600 uppercase tracking-wider">Why Empire Skills</p>
           <h2 className="mt-3 text-3xl sm:text-4xl font-display font-bold text-ink-900">Everything you need to grow</h2>
