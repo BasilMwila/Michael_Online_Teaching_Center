@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { listPublishedCourses } from '../lib/courses.js';
 import { listPublishedTestimonials } from '../lib/testimonials.js';
 import { formatMoney } from '../lib/format.js';
+import { STUDENT_STORIES, VIDEO_STORIES } from '../lib/studentStories.js';
 import Icon from '../components/Icon.jsx';
 import Spinner from '../components/Spinner.jsx';
+import { StudentStoryCard, VideoStory } from '../components/StudentStory.jsx';
 
 const FEATURES = [
   { icon: 'video', title: 'Self-paced video lessons', text: 'Pre-recorded HD lessons you can pause, rewind, and revisit. Each lesson is paired with a short quiz.', tint: 'from-brand-50 to-brand-100', iconColor: 'text-brand-600' },
@@ -68,101 +70,60 @@ export default function Home() {
 
           <div className="relative hidden lg:block animate-fade-in">
             <div className="relative max-w-md mx-auto">
-              {/* Floating preview cards */}
-              <div className="absolute -top-6 -left-6 card p-4 w-60 shadow-glow text-ink-900 animate-float" style={{ animationDelay: '0.2s' }}>
-                <div className="flex items-center gap-3">
-                  <div className="icon-tile bg-gradient-to-br from-brand-500 to-brand-700 text-white">
-                    <Icon name="play-circle" size={22} />
-                  </div>
-                  <div>
-                    <p className="text-xs text-ink-400 font-medium">Now playing</p>
-                    <p className="font-semibold text-sm">Lesson 4 of 12</p>
-                  </div>
-                </div>
-                <div className="mt-3 h-1.5 bg-ink-100 rounded-full overflow-hidden">
-                  <div className="h-full w-2/3 bg-gradient-to-r from-brand-500 to-brand-400 rounded-full" />
-                </div>
-              </div>
-
-              <div className="absolute -bottom-6 -right-6 card p-4 w-64 shadow-glow text-ink-900 animate-float" style={{ animationDelay: '1.2s' }}>
+              {/* Floating accent card */}
+              <div className="absolute -bottom-6 -right-6 z-10 card p-4 w-64 shadow-glow text-ink-900 animate-float" style={{ animationDelay: '1.2s' }}>
                 <div className="flex items-center gap-3">
                   <div className="icon-tile bg-accent-100 text-accent-600">
-                    <Icon name="id-badge" size={22} />
+                    <Icon name="users" size={22} />
                   </div>
                   <div>
-                    <p className="text-xs text-ink-400 font-medium">Student ID</p>
-                    <p className="font-mono font-bold text-sm">EST-2026-00042</p>
+                    <p className="text-xs text-ink-400 font-medium">Instructor-led</p>
+                    <p className="font-semibold text-sm">Practical, hands-on classes</p>
                   </div>
                 </div>
               </div>
 
-              {/* Main mock card */}
-              <div className="card p-6 text-ink-900 shadow-lift">
-                <div className="aspect-video bg-gradient-to-br from-brand-700 via-brand-800 to-ink-900 rounded-xl relative overflow-hidden">
-                  <div className="absolute inset-0 pattern-dots opacity-50" />
-                  <div className="absolute inset-0 grid place-items-center">
-                    <div className="w-16 h-16 rounded-full bg-white/95 grid place-items-center shadow-lg">
-                      <Icon name="play-circle" size={36} className="text-brand-600 ml-0.5" />
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="badge bg-brand-100 text-brand-700">Featured</span>
-                    <span className="text-xs text-ink-400">12 lessons · 4h 30m</span>
-                  </div>
-                  <h3 className="font-semibold">Advanced Digital Marketing</h3>
-                  <div className="flex items-center gap-1 text-accent-400">
-                    {[1,2,3,4,5].map((i) => <Icon key={i} name="star" size={14} />)}
-                    <span className="text-xs text-ink-600 ml-1">4.9 · 124 reviews</span>
-                  </div>
-                </div>
-              </div>
+              {/* Real training session */}
+              <figure className="card p-3 text-ink-900 shadow-lift">
+                <img
+                  src="/students/data-analysis-training.jpg"
+                  alt="Learners in a Data Analysis training session at Empire Skills Academy"
+                  className="w-full aspect-[4/3] object-cover rounded-xl"
+                />
+                <figcaption className="flex items-center gap-2 px-1.5 pt-3 pb-1">
+                  <span className="badge bg-brand-100 text-brand-700">Data Analysis</span>
+                  <span className="text-xs text-ink-500">Live training session</span>
+                </figcaption>
+              </figure>
             </div>
           </div>
         </div>
       </section>
 
-      {/* VIDEO TESTIMONIAL */}
+      {/* STUDENT'S CORNER — VIDEO */}
       <section className="bg-brand-950 relative overflow-hidden border-t-4 border-accent-500">
         <div className="absolute inset-0 bg-mesh-dark opacity-60" />
         <div className="absolute inset-0 pattern-dots opacity-20" />
-        <div className="relative max-w-7xl mx-auto container-px py-16 grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
-          <div className="order-2 lg:order-1 text-center lg:text-left">
-            <p className="text-sm font-semibold text-accent-400 uppercase tracking-wider">In their own words</p>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-display font-bold text-white">Hear from a student</h2>
-            <p className="mt-4 text-ink-200 text-lg leading-relaxed max-w-lg mx-auto lg:mx-0">
-              Real feedback from someone who trained with Empire Skills — unscripted, in their own voice.
+        <div className="relative max-w-7xl mx-auto container-px py-16">
+          <div className="text-center max-w-2xl mx-auto">
+            <p className="text-sm font-semibold text-accent-400 uppercase tracking-wider">Student&rsquo;s corner</p>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-display font-bold text-white">Hear it from our students</h2>
+            <p className="mt-4 text-ink-200 text-lg leading-relaxed">
+              Unscripted feedback from learners who trained with Empire Skills Academy — in their own voices.
             </p>
-            <div className="mt-6 flex gap-0.5 text-accent-400 justify-center lg:justify-start">
-              {[1, 2, 3, 4, 5].map((i) => <Icon key={i} name="star" size={18} />)}
-            </div>
-            <div className="mt-8 flex flex-wrap gap-3 justify-center lg:justify-start">
-              <Link to="/testimonials" className="btn-white">
-                Read more stories
-                <Icon name="arrow-right" size={18} />
-              </Link>
-              <Link to="/courses" className="btn bg-white/10 backdrop-blur text-white border border-white/20 hover:bg-white/15">
-                Browse courses
-              </Link>
-            </div>
           </div>
 
-          <div className="order-1 lg:order-2 flex justify-center">
-            <div className="relative w-full max-w-[300px]">
-              <div className="absolute -inset-3 rounded-[2.5rem] bg-gradient-to-br from-accent-400/40 via-transparent to-brand-400/30 blur-xl" />
-              <video
-                src="https://res.cloudinary.com/dhx7e5lt7/video/upload/testimonials/es6esn6ksftkcyxatgbv.mp4"
-                poster="https://res.cloudinary.com/dhx7e5lt7/video/upload/so_1/testimonials/es6esn6ksftkcyxatgbv.jpg"
-                className="relative w-full rounded-[2rem] border-4 border-white/10 shadow-lift bg-black"
-                controls
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-              />
-            </div>
+          <div className="mt-12 flex flex-wrap justify-center gap-12 sm:gap-16">
+            {VIDEO_STORIES.map((v, i) => (
+              <VideoStory key={v.id} story={v} autoPlay={i === 0} />
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <Link to="/testimonials" className="btn-white">
+              Read all student stories
+              <Icon name="arrow-right" size={18} />
+            </Link>
           </div>
         </div>
       </section>
@@ -220,19 +181,26 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      {testimonials.length > 0 && (
-        <section className="py-20">
-          <div className="max-w-7xl mx-auto container-px">
-            <div className="text-center mb-12">
-              <p className="text-sm font-semibold text-brand-600 uppercase tracking-wider">Student stories</p>
-              <h2 className="mt-2 text-3xl sm:text-4xl font-display font-bold text-ink-900">Loved by learners</h2>
-              <p className="mt-3 text-ink-600">Real words from graduates of our programs.</p>
-            </div>
-            <div className="grid gap-6 md:grid-cols-3">
+      {/* STUDENT STORIES */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto container-px">
+          <div className="text-center mb-12">
+            <p className="text-sm font-semibold text-brand-600 uppercase tracking-wider">Student&rsquo;s corner</p>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-display font-bold text-ink-900">Loved by learners</h2>
+            <p className="mt-3 text-ink-600">Real words from people who trained with Empire Skills Academy.</p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {STUDENT_STORIES.slice(0, 3).map((s) => (
+              <StudentStoryCard key={s.id} story={s} />
+            ))}
+          </div>
+
+          {testimonials.length > 0 && (
+            <div className="grid gap-6 md:grid-cols-3 mt-6">
               {testimonials.map((t) => (
                 <article key={t.id} className="card p-7 relative overflow-hidden">
-                  <div className="absolute -top-6 -left-2 text-9xl text-brand-100 font-display font-bold leading-none select-none">"</div>
+                  <div className="absolute -top-6 -left-2 text-9xl text-accent-500/15 font-display font-bold leading-none select-none">&ldquo;</div>
                   <div className="relative">
                     <div className="flex gap-0.5 text-accent-400 mb-4">
                       {Array.from({ length: t.rating || 5 }).map((_, i) => <Icon key={i} name="star" size={16} />)}
@@ -251,15 +219,17 @@ export default function Home() {
                 </article>
               ))}
             </div>
-            <div className="text-center mt-10">
-              <Link to="/testimonials" className="btn-secondary">
-                Read all testimonials
-                <Icon name="arrow-right" size={16} />
-              </Link>
-            </div>
+          )}
+
+          <div className="text-center mt-10">
+            <Link to="/testimonials" className="btn-secondary">
+              Read all student stories
+              <Icon name="arrow-right" size={16} />
+            </Link>
           </div>
-        </section>
-      )}
+
+        </div>
+      </section>
 
       {/* CTA */}
       <section className="relative py-20 bg-gradient-to-br from-brand-700 via-brand-800 to-ink-900 text-white overflow-hidden">
