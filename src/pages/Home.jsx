@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { listPublishedCourses } from '../lib/courses.js';
 import { listPublishedTestimonials } from '../lib/testimonials.js';
 import { formatMoney } from '../lib/format.js';
-import { STUDENT_STORIES, VIDEO_STORIES } from '../lib/studentStories.js';
+import { STUDENT_STORIES, VIDEO_STORIES, LESSON_FEEDBACK } from '../lib/studentStories.js';
 import Icon from '../components/Icon.jsx';
 import Spinner from '../components/Spinner.jsx';
-import { StudentStoryCard, VideoStory } from '../components/StudentStory.jsx';
+import { StudentStoryCard, VideoStory, FeedbackBubble } from '../components/StudentStory.jsx';
 
 const FEATURES = [
   { icon: 'video', title: 'Self-paced video lessons', text: 'Pre-recorded HD lessons you can pause, rewind, and revisit. Each lesson is paired with a short quiz.', tint: 'from-brand-50 to-brand-100', iconColor: 'text-brand-600' },
@@ -194,6 +194,18 @@ export default function Home() {
             {STUDENT_STORIES.slice(0, 3).map((s) => (
               <StudentStoryCard key={s.id} story={s} />
             ))}
+          </div>
+
+          {/* Language programme feedback */}
+          <div className="mt-14">
+            <p className="text-center text-sm font-semibold text-brand-600 uppercase tracking-wider mb-8">
+              From our IELTS &amp; English lessons
+            </p>
+            <div className="grid gap-10 md:grid-cols-2 max-w-4xl mx-auto">
+              {LESSON_FEEDBACK.map((f) => (
+                <FeedbackBubble key={f.id} feedback={f} />
+              ))}
+            </div>
           </div>
 
           {testimonials.length > 0 && (

@@ -73,6 +73,31 @@ export const STUDENT_STORIES = [
   }
 ];
 
+// Short-form feedback from the language programmes, shown as gold speech
+// bubbles that mirror the academy's own "Feedback" social cards.
+export const LESSON_FEEDBACK = [
+  {
+    id: 'ainebyoona-fischer',
+    name: 'Ainebyoona Fischer',
+    country: 'Uganda',
+    hashtag: '#IELTS Lessons: UKVI',
+    graphic: '/feedback/ainebyoona-fischer.jpg',
+    rating: 5,
+    quote:
+      'The tutor was very understanding, patient and clear. His lectures not only prepared me for the IELTS exam but also helped me to improve on my everyday language. I managed to score an overall score of band 6.5, which is beyond the required target.'
+  },
+  {
+    id: 'sandro-italy',
+    name: 'Sandro',
+    country: 'Italy',
+    hashtag: '#EnglishWithMichael',
+    graphic: '/feedback/sandro.jpg',
+    rating: 5,
+    quote:
+      'I highly recommend Michael as an English tutor. He is incredibly professional, punctual, and has a deep understanding of the language. He tailored every lesson to my specific professional goals, and thanks to his guidance my business English has improved tremendously. A top-tier educator!'
+  }
+];
+
 const CLOUD = 'https://res.cloudinary.com/dhx7e5lt7/video/upload';
 
 export const VIDEO_STORIES = [

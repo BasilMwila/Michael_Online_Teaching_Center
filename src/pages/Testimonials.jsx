@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listPublishedTestimonials } from '../lib/testimonials.js';
-import { STUDENT_STORIES, VIDEO_STORIES } from '../lib/studentStories.js';
+import { STUDENT_STORIES, VIDEO_STORIES, LESSON_FEEDBACK } from '../lib/studentStories.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import Spinner from '../components/Spinner.jsx';
 import Icon from '../components/Icon.jsx';
-import { StudentStoryFull, VideoStory } from '../components/StudentStory.jsx';
+import { StudentStoryFull, VideoStory, FeedbackBubble } from '../components/StudentStory.jsx';
 
 export default function Testimonials() {
   const { firebaseUser } = useAuth();
@@ -65,6 +65,22 @@ export default function Testimonials() {
           <div className="space-y-8">
             {STUDENT_STORIES.map((s) => (
               <StudentStoryFull key={s.id} story={s} />
+            ))}
+          </div>
+        </section>
+
+        {/* LANGUAGE PROGRAMME FEEDBACK */}
+        <section>
+          <div className="text-center mb-10">
+            <p className="text-sm font-semibold text-brand-600 uppercase tracking-wider">From our language programmes</p>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-display font-bold text-ink-900">Feedback</h2>
+            <p className="mt-3 text-ink-600 max-w-2xl mx-auto">
+              Learners from around the world on our IELTS preparation and one-to-one English lessons.
+            </p>
+          </div>
+          <div className="grid gap-10 md:grid-cols-2">
+            {LESSON_FEEDBACK.map((f) => (
+              <FeedbackBubble key={f.id} feedback={f} />
             ))}
           </div>
         </section>

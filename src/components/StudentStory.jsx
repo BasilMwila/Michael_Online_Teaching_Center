@@ -99,6 +99,83 @@ export function StudentStoryFull({ story }) {
   );
 }
 
+/**
+ * Gold speech-bubble feedback card, mirroring the academy's own "Feedback"
+ * social graphics. Falls back to an initials avatar when there is no photo.
+ */
+export function FeedbackBubble({ feedback }) {
+  const initials = feedback.name
+    .split(' ')
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  // When the original branded artwork is supplied, show it as-is.
+  if (feedback.graphic) {
+    return (
+      <figure className="rounded-2xl overflow-hidden shadow-lift bg-white ring-1 ring-ink-100">
+        <img
+          src={feedback.graphic}
+          alt={`Feedback card from ${feedback.name}, ${feedback.country} — ${feedback.hashtag}`}
+          loading="lazy"
+          width="1000"
+          height="1233"
+          className="w-full h-auto block"
+        />
+        {/* The quote lives inside the artwork; expose it to screen readers and search engines. */}
+        <figcaption className="sr-only">
+          {feedback.name}, {feedback.country} ({feedback.hashtag}): &ldquo;{feedback.quote}&rdquo; — rated{' '}
+          {feedback.rating} out of 5.
+        </figcaption>
+      </figure>
+    );
+  }
+
+  return (
+    <figure className="flex flex-col">
+      <div className="bg-accent-500 rounded-3xl p-6 sm:p-7 shadow-lift relative">
+        <div className="flex items-center gap-4">
+          {feedback.photo ? (
+            <img
+              src={feedback.photo}
+              alt={feedback.name}
+              loading="lazy"
+              className="w-16 h-16 rounded-full object-cover ring-4 ring-white/70 flex-shrink-0"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-brand-900 text-white grid place-items-center font-display font-bold text-xl ring-4 ring-white/70 flex-shrink-0">
+              {initials}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="font-display font-bold text-lg text-brand-950 leading-tight">{feedback.name}</p>
+            <p className="text-sm text-brand-900/70">{feedback.country}</p>
+          </div>
+        </div>
+
+        <blockquote className="mt-5 text-brand-950 leading-relaxed">{feedback.quote}</blockquote>
+
+        <div className="mt-5 flex gap-1 text-brand-900" aria-label={`${feedback.rating} out of 5 stars`}>
+          {Array.from({ length: feedback.rating || 5 }).map((_, i) => (
+            <Icon key={i} name="star" size={18} />
+          ))}
+        </div>
+
+        {/* speech-bubble tail */}
+        <div
+          className="absolute left-9 -bottom-4 w-8 h-5 bg-accent-500"
+          style={{ clipPath: 'polygon(0 0, 100% 0, 18% 100%)' }}
+          aria-hidden="true"
+        />
+      </div>
+      <figcaption className="mt-7 pl-1 text-sm font-semibold italic text-brand-800">
+        {feedback.hashtag}
+      </figcaption>
+    </figure>
+  );
+}
+
 /** Portrait-orientation video testimonial. */
 export function VideoStory({ story, autoPlay = false }) {
   return (
