@@ -3,9 +3,11 @@ import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   getCourse, updateCourse, listLessons, createLesson, updateLesson, deleteLesson,
-  getQuiz, upsertQuiz
+  getQuiz, upsertQuiz, listQuizzesByLesson
 } from '../../lib/courses.js';
+import { generateQuizForLesson } from '../../lib/aiIngest.js';
 import FileUploader from '../../components/FileUploader.jsx';
+import DocumentToLessons from '../../components/DocumentToLessons.jsx';
 import Icon from '../../components/Icon.jsx';
 import Spinner from '../../components/Spinner.jsx';
 
@@ -13,12 +15,14 @@ export default function AdminCourseEditor() {
   const { courseId } = useParams();
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState([]);
+  const [quizzes, setQuizzes] = useState({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('details');
 
   async function refresh() {
     setCourse(await getCourse(courseId));
     setLessons(await listLessons(courseId));
+    setQuizzes(await listQuizzesByLesson(courseId));
   }
 
   useEffect(() => { refresh().finally(() => setLoading(false)); }, [courseId]);
@@ -51,7 +55,8 @@ export default function AdminCourseEditor() {
       <div className="flex gap-1 border-b border-ink-100 mb-6">
         {[
           { id: 'details', label: 'Details', icon: 'book-open' },
-          { id: 'lessons', label: 'Lessons & quizzes', icon: 'video' }
+          { id: 'lessons', label: 'Lessons & quizzes', icon: 'video' },
+          { id: 'ai', label: 'AI import', icon: 'sparkles' }
         ].map((t) => (
           <button
             key={t.id}
@@ -69,8 +74,18 @@ export default function AdminCourseEditor() {
       {tab === 'lessons' && (
         <LessonsManager
           courseId={courseId}
+          courseTitle={course.title}
           lessons={lessons}
+          quizzes={quizzes}
           onChange={refresh}
+        />
+      )}
+      {tab === 'ai' && (
+        <DocumentToLessons
+          courseId={courseId}
+          courseTitle={course.title}
+          existingCount={lessons.length}
+          onImported={() => { refresh(); setTab('lessons'); }}
         />
       )}
     </div>
@@ -183,10 +198,43 @@ function CourseDetailsForm({ course, onSave }) {
   );
 }
 
-function LessonsManager({ courseId, lessons, onChange }) {
+function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange }) {
   const [showLessonForm, setShowLessonForm] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
   const [editingQuiz, setEditingQuiz] = useState(null);
+  const [generating, setGenerating] = useState(null);
+
+  const missingQuiz = lessons.filter((l) => !quizzes[l.id]?.questions?.length && l.bodyText);
+
+  async function generateMissingQuizzes() {
+    if (!missingQuiz.length) return;
+    let made = 0;
+    const failures = [];
+    for (let i = 0; i < missingQuiz.length; i++) {
+      const l = missingQuiz[i];
+      setGenerating({ done: i, total: missingQuiz.length, title: l.title });
+      try {
+        const { quiz } = await generateQuizForLesson({
+          title: l.title,
+          bodyText: l.bodyText,
+          courseTitle
+        });
+        await upsertQuiz(courseId, l.id, {
+          title: `Quiz: ${l.title}`,
+          passScore: quiz.passScore || 70,
+          questions: quiz.questions,
+          source: 'ai-import'
+        });
+        made++;
+      } catch (err) {
+        failures.push(`${l.title}: ${err.message}`);
+      }
+    }
+    setGenerating(null);
+    if (made) toast.success(`${made} quiz${made === 1 ? '' : 'zes'} generated`);
+    if (failures.length) toast.error(`${failures.length} could not be generated. ${failures[0]}`);
+    onChange?.();
+  }
 
   async function handleSaveLesson(form) {
     const payload = {
@@ -235,11 +283,51 @@ function LessonsManager({ courseId, lessons, onChange }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center flex-wrap gap-3">
-        <h2 className="text-lg font-semibold">{lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'}</h2>
+        <h2 className="text-lg font-semibold">
+          {lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'}
+          {lessons.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-ink-500">
+              · {lessons.length - missingQuiz.length} with a quiz
+            </span>
+          )}
+        </h2>
         <button onClick={() => { setEditingLesson(null); setShowLessonForm(true); }} className="btn-primary">
           <Icon name="sparkles" size={16} />Add lesson
         </button>
       </div>
+
+      {missingQuiz.length > 0 && (
+        <div className="card p-5 border-l-4 border-accent-500">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <p className="font-semibold text-ink-900">
+                {missingQuiz.length} lesson{missingQuiz.length === 1 ? '' : 's'} without a quiz
+              </p>
+              <p className="text-sm text-ink-600 mt-1 max-w-xl leading-relaxed">
+                Students must pass a lesson&rsquo;s quiz before the next lesson unlocks. Lessons
+                with no quiz only need &ldquo;Mark complete&rdquo;.
+              </p>
+              {generating && (
+                <p className="text-sm text-brand-700 mt-2">
+                  Writing quiz {generating.done + 1} of {generating.total} — {generating.title}…
+                </p>
+              )}
+            </div>
+            <button onClick={generateMissingQuizzes} disabled={!!generating} className="btn-primary flex-shrink-0">
+              <Icon name="sparkles" size={16} />
+              {generating ? 'Generating…' : 'Generate quizzes with AI'}
+            </button>
+          </div>
+          {generating && (
+            <div className="mt-3 w-full bg-ink-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-brand-600 h-2 rounded-full transition-all"
+                style={{ width: `${(generating.done / generating.total) * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {lessons.length === 0 ? (
         <div className="card p-10 text-center">
@@ -261,6 +349,15 @@ function LessonsManager({ courseId, lessons, onChange }) {
                     {l.bodyText && <span className="inline-flex items-center gap-1"><Icon name="book-open" size={12} />Notes</span>}
                     {l.resources?.length > 0 && <span className="inline-flex items-center gap-1"><Icon name="book-open" size={12} />{l.resources.length} resource{l.resources.length !== 1 ? 's' : ''}</span>}
                     {l.durationMinutes && <span className="inline-flex items-center gap-1"><Icon name="clock" size={12} />{l.durationMinutes} min</span>}
+                    {quizzes[l.id]?.questions?.length ? (
+                      <span className="inline-flex items-center gap-1 text-brand-700 font-medium">
+                        <Icon name="check" size={12} />{quizzes[l.id].questions.length}-question quiz
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-accent-700">
+                        <Icon name="lock" size={12} />No quiz
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

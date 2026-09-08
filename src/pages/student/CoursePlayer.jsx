@@ -23,9 +23,11 @@ export default function CoursePlayer() {
 
   const current = useMemo(() => {
     if (!lessons.length) return null;
-    if (!lessonId) return lessons[0];
-    return lessons.find((l) => l.id === lessonId) || lessons[0];
-  }, [lessons, lessonId]);
+    if (lessonId) return lessons.find((l) => l.id === lessonId) || lessons[0];
+    // No lesson in the URL: resume at the first one still outstanding.
+    const done = new Set(enrollment?.completedLessons || []);
+    return lessons.find((l) => !done.has(l.id)) || lessons[0];
+  }, [lessons, lessonId, enrollment]);
 
   useEffect(() => {
     (async () => {
@@ -82,6 +84,28 @@ export default function CoursePlayer() {
   const next = currentIndex >= 0 ? lessons[currentIndex + 1] : null;
   const prev = currentIndex > 0 ? lessons[currentIndex - 1] : null;
 
+  // Lessons arrive ordered, so consecutive runs of the same module name form
+  // the modules. Courses with no modules collapse to a single unnamed group.
+  // A lesson is unlocked once every lesson before it is complete, so a student
+  // has to pass each lesson's quiz before the next one opens. Already-completed
+  // lessons stay open so they can revise.
+  const firstIncomplete = lessons.findIndex((l) => !completedSet.has(l.id));
+  const unlockedUpTo = firstIncomplete === -1 ? lessons.length - 1 : firstIncomplete;
+  const isUnlocked = (index) => index <= unlockedUpTo;
+
+  const nextLocked = next ? !isUnlocked(currentIndex + 1) : false;
+  const hasQuiz = Boolean(quiz?.questions?.length);
+  const currentLocked = currentIndex >= 0 && !isUnlocked(currentIndex);
+
+  const modules = [];
+  lessons.forEach((l, index) => {
+    const name = l.module || '';
+    const last = modules[modules.length - 1];
+    if (last && last.name === name) last.lessons.push({ ...l, index });
+    else modules.push({ name, lessons: [{ ...l, index }] });
+  });
+  const hasModules = modules.some((m) => m.name);
+
   async function markComplete() {
     if (!current || isCompleted) return;
     await markLessonCompleted(enrollment.id, current.id, lessons.length);
@@ -126,10 +150,36 @@ export default function CoursePlayer() {
         </Link>
         <h1 className="text-2xl font-display font-bold mt-2 text-ink-900">{course.title}</h1>
         {current && (
-          <p className="text-ink-600 mb-4 mt-1">
-            Lesson {currentIndex + 1} of {lessons.length} · <span className="font-medium text-ink-900">{current.title}</span>
-          </p>
+          <>
+            {current.module && (
+              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wider mt-2">{current.module}</p>
+            )}
+            <p className="text-ink-600 mb-4 mt-1">
+              Lesson {currentIndex + 1} of {lessons.length} · <span className="font-medium text-ink-900">{current.title}</span>
+            </p>
+            {current.summary && <p className="text-ink-600 -mt-2 mb-4 text-sm">{current.summary}</p>}
+          </>
         )}
+
+        {/* A locked lesson reached by URL: show why, not the content. */}
+        {currentLocked ? (
+          <div className="card p-10 text-center">
+            <div className="icon-tile w-16 h-16 mx-auto bg-accent-100 text-accent-700 mb-5">
+              <Icon name="lock" size={28} />
+            </div>
+            <h2 className="text-xl font-display font-bold text-ink-900">This lesson is locked</h2>
+            <p className="mt-2 text-ink-600 max-w-md mx-auto leading-relaxed">
+              Work through the course in order — finish{' '}
+              <span className="font-medium text-ink-900">{lessons[unlockedUpTo]?.title}</span>{' '}
+              and pass its quiz to unlock this one.
+            </p>
+            <Link to={`/learn/${courseId}/${lessons[unlockedUpTo]?.id}`} className="btn-primary mt-6">
+              Go to my current lesson
+              <Icon name="arrow-right" size={16} />
+            </Link>
+          </div>
+        ) : (
+        <>
 
         {/* VIDEO PLAYER */}
         {current?.videoUrl ? (
@@ -268,21 +318,33 @@ export default function CoursePlayer() {
               </Link>
             )}
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {!isCompleted ? (
-              <button onClick={markComplete} className="btn-ghost">
-                <Icon name="check" size={16} />Mark complete
-              </button>
-            ) : (
+          <div className="flex gap-2 flex-wrap items-center">
+            {isCompleted ? (
               <span className="inline-flex items-center gap-1.5 text-brand-700 font-semibold px-3 py-2">
                 <Icon name="check" size={16} />Completed
               </span>
+            ) : hasQuiz ? (
+              // The quiz is the only way past this lesson — no manual override.
+              <span className="inline-flex items-center gap-1.5 text-ink-500 text-sm px-3 py-2">
+                <Icon name="lock" size={15} />Pass the quiz to complete this lesson
+              </span>
+            ) : (
+              <button onClick={markComplete} className="btn-ghost">
+                <Icon name="check" size={16} />Mark complete
+              </button>
             )}
-            {next && (
+            {next && (nextLocked ? (
+              <span
+                className="btn bg-ink-100 text-ink-400 cursor-not-allowed"
+                title="Finish this lesson to unlock the next one"
+              >
+                <Icon name="lock" size={16} />Next lesson
+              </span>
+            ) : (
               <Link to={`/learn/${courseId}/${next.id}`} className="btn-primary">
                 Next lesson <Icon name="arrow-right" size={16} />
               </Link>
-            )}
+            ))}
             {!next && enrollment.progressPercent === 100 && (
               <button onClick={() => navigate('/submit-testimonial')} className="btn-accent">
                 <Icon name="star" size={16} />Leave a testimonial
@@ -290,6 +352,8 @@ export default function CoursePlayer() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* SIDEBAR */}
@@ -302,29 +366,82 @@ export default function CoursePlayer() {
           <div className="w-full bg-ink-100 rounded-full h-2 overflow-hidden">
             <div className="bg-gradient-to-r from-brand-500 to-brand-600 h-2 rounded-full transition-all" style={{ width: `${enrollment.progressPercent || 0}%` }} />
           </div>
-          <p className="text-xs text-ink-500 mt-1.5">{completedSet.size} of {lessons.length} lessons complete</p>
+          <p className="text-xs text-ink-500 mt-1.5">
+            {completedSet.size} of {lessons.length} lessons complete
+            {hasModules && ` · ${modules.length} modules`}
+          </p>
         </div>
-        <ol className="space-y-0.5">
-          {lessons.map((l, i) => {
-            const done = completedSet.has(l.id);
-            const active = l.id === current?.id;
+        <div className="space-y-4">
+          {modules.map((mod, mi) => {
+            const doneInModule = mod.lessons.filter((l) => completedSet.has(l.id)).length;
+            const moduleDone = doneInModule === mod.lessons.length;
             return (
-              <li key={l.id}>
-                <Link
-                  to={`/learn/${courseId}/${l.id}`}
-                  className={`flex items-center gap-3 p-2.5 rounded-lg transition ${active ? 'bg-brand-50' : 'hover:bg-ink-50'}`}
-                >
-                  <span className={`w-7 h-7 rounded-lg grid place-items-center text-xs font-bold flex-shrink-0 ${
-                    done ? 'bg-brand-600 text-white' : active ? 'bg-brand-100 text-brand-700 ring-2 ring-brand-500' : 'bg-ink-100 text-ink-600'
-                  }`}>
-                    {done ? <Icon name="check" size={14} strokeWidth={2.5} /> : i + 1}
-                  </span>
-                  <span className={`text-sm flex-1 truncate ${active ? 'font-semibold text-brand-700' : 'text-ink-700'}`}>{l.title}</span>
-                </Link>
-              </li>
+              <div key={mi}>
+                {mod.name && (
+                  <div className="flex items-center gap-2 px-1 mb-1.5">
+                    <span className={`w-5 h-5 rounded-md grid place-items-center flex-shrink-0 ${
+                      moduleDone ? 'bg-brand-600 text-white' : 'bg-ink-100 text-ink-500'
+                    }`}>
+                      {moduleDone
+                        ? <Icon name="check" size={12} strokeWidth={3} />
+                        : <span className="text-[9px] font-bold">{mi + 1}</span>}
+                    </span>
+                    <p className="text-xs font-bold text-ink-800 uppercase tracking-wide flex-1 leading-tight">{mod.name}</p>
+                    <span className="text-[11px] font-semibold text-ink-500 flex-shrink-0">
+                      {doneInModule}/{mod.lessons.length}
+                    </span>
+                  </div>
+                )}
+                <ol className={`space-y-0.5 ${mod.name ? 'pl-1.5 border-l-2 border-ink-100 ml-2' : ''}`}>
+                  {mod.lessons.map((l) => {
+                    const done = completedSet.has(l.id);
+                    const active = l.id === current?.id;
+                    const locked = !isUnlocked(l.index);
+
+                    const badge = (
+                      <span className={`w-7 h-7 rounded-lg grid place-items-center text-xs font-bold flex-shrink-0 ${
+                        done ? 'bg-brand-600 text-white'
+                          : active ? 'bg-brand-100 text-brand-700 ring-2 ring-brand-500'
+                          : locked ? 'bg-ink-50 text-ink-300'
+                          : 'bg-ink-100 text-ink-600'
+                      }`}>
+                        {done ? <Icon name="check" size={14} strokeWidth={2.5} />
+                          : locked ? <Icon name="lock" size={12} />
+                          : l.index + 1}
+                      </span>
+                    );
+
+                    if (locked) {
+                      return (
+                        <li key={l.id}>
+                          <div
+                            className="flex items-center gap-3 p-2.5 rounded-lg cursor-not-allowed"
+                            title="Finish the previous lesson to unlock this"
+                          >
+                            {badge}
+                            <span className="text-sm flex-1 truncate text-ink-400">{l.title}</span>
+                          </div>
+                        </li>
+                      );
+                    }
+
+                    return (
+                      <li key={l.id}>
+                        <Link
+                          to={`/learn/${courseId}/${l.id}`}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg transition ${active ? 'bg-brand-50' : 'hover:bg-ink-50'}`}
+                        >
+                          {badge}
+                          <span className={`text-sm flex-1 truncate ${active ? 'font-semibold text-brand-700' : 'text-ink-700'}`}>{l.title}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
             );
           })}
-        </ol>
+        </div>
       </aside>
     </div>
   );

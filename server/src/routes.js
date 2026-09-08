@@ -1,9 +1,31 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { db, uid, now, tx, insert, update, remove, getById, fromRow } from './db.js';
 import {
   hashPassword, checkPassword, signToken, issueStudentId,
   publicUser, requireAuth, requireAdmin
 } from './auth.js';
+import { requireFirebaseAdmin } from './firebaseAuth.js';
+import { extractDocumentText, SUPPORTED_EXTENSIONS } from './documentText.js';
+import { segmentIntoLessons, generateQuizForLesson } from './aiLessons.js';
+
+const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB) || 25;
+
+// Documents are held in memory only — they are read once and discarded.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024, files: 1 }
+});
+
+function uploadDocument(req, res, next) {
+  upload.single('file')(req, res, (err) => {
+    if (err?.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: `That file is larger than the ${MAX_UPLOAD_MB} MB limit.` });
+    }
+    if (err) return res.status(400).json({ error: err.message || 'Upload failed.' });
+    next();
+  });
+}
 
 const r = Router();
 const all = (table, sql, ...params) => db.prepare(sql).all(...params).map((row) => fromRow(table, row));
@@ -386,6 +408,71 @@ r.post('/whatsapp-groups', requireAdmin, (req, res) => {
 r.get('/whatsapp-groups', requireAuth, (req, res) => {
   const userId = req.user.role === 'admin' && req.query.userId ? req.query.userId : req.user.id;
   res.json(all('whatsappGroupMembers', 'SELECT * FROM whatsappGroupMembers WHERE userId = ?', userId));
+});
+
+// ---------- AI lecture import ----------
+// Admins upload a PDF/PPTX/DOCX; we extract the text, ask OpenAI to segment it
+// into modules and lessons, and hand the structure back for review. Nothing is
+// persisted here — the browser saves the approved lessons to its own store.
+
+r.get('/ai/status', (_req, res) => {
+  res.json({
+    configured: Boolean(process.env.OPENAI_API_KEY),
+    adminGateReady: Boolean(process.env.FIREBASE_PROJECT_ID),
+    model: process.env.OPENAI_MODEL || 'gpt-4o',
+    supported: SUPPORTED_EXTENSIONS,
+    maxFileMb: MAX_UPLOAD_MB
+  });
+});
+
+r.post('/ai/segment', requireFirebaseAdmin, uploadDocument, async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file was uploaded.' });
+
+    const extracted = await extractDocumentText(req.file.buffer, req.file.originalname);
+    const { modules, usage, model, chunks } = await segmentIntoLessons({
+      text: extracted.text,
+      courseTitle: req.body?.courseTitle || '',
+      hint: req.body?.hint || ''
+    });
+
+    const lessonCount = modules.reduce((n, m) => n + m.lessons.length, 0);
+    console.log(
+      `[ai] ${req.firebaseUser.email} segmented "${req.file.originalname}" ` +
+      `(${extracted.kind}, ${extracted.charCount} chars) into ${modules.length} modules / ` +
+      `${lessonCount} lessons using ${usage.calls} ${model} call(s)`
+    );
+
+    res.json({
+      modules,
+      source: {
+        filename: req.file.originalname,
+        kind: extracted.kind,
+        sections: extracted.sections.length,
+        charCount: extracted.charCount
+      },
+      meta: { model, chunks, usage, lessonCount, moduleCount: modules.length }
+    });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+// Build a quiz for a single existing lesson (backfill for lessons created
+// before quizzes, or to replace one an author isn't happy with).
+r.post('/ai/quiz', requireFirebaseAdmin, async (req, res, next) => {
+  try {
+    const { title, bodyText, courseTitle } = req.body || {};
+    if (!title || !bodyText) return res.status(400).json({ error: 'title and bodyText are required.' });
+
+    const { quiz, usage } = await generateQuizForLesson({ title, bodyText, courseTitle });
+    console.log(`[ai] ${req.firebaseUser.email} generated a ${quiz.questions.length}-question quiz for "${title}"`);
+    res.json({ quiz, usage });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
 });
 
 export default r;

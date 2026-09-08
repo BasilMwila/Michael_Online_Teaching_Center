@@ -11,10 +11,17 @@
     "start": "node src/index.js",
     "seed": "node seed.js"
   },
+  "//overrides": "express 4.x pins a qs version with published advisories; force the patched release.",
+  "overrides": {
+    "qs": "^6.16.0"
+  },
   "dependencies": {
+    "adm-zip": "^0.6.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "pdfjs-dist": "^4.10.38"
   }
 }

@@ -66,6 +66,17 @@ export async function deleteLesson(courseId, lessonId) {
   await deleteDoc(doc(db, 'courses', courseId, 'lessons', lessonId));
 }
 
+/** All quizzes for a course, keyed by lessonId — avoids a read per lesson. */
+export async function listQuizzesByLesson(courseId) {
+  const snap = await getDocs(collection(db, 'courses', courseId, 'quizzes'));
+  const map = {};
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    if (data.lessonId) map[data.lessonId] = { id: d.id, ...data };
+  });
+  return map;
+}
+
 export async function getQuiz(courseId, lessonId) {
   const snap = await getDocs(collection(db, 'courses', courseId, 'quizzes'));
   const match = snap.docs.find((d) => d.data().lessonId === lessonId);
