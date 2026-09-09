@@ -5,9 +5,12 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
-  updateProfile
+  updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
 
 const AuthContext = createContext(null);
@@ -36,8 +39,29 @@ export function AuthProvider({ children }) {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
-        const snap = await getDoc(doc(db, 'users', fbUser.uid));
-        setProfile(snap.exists() ? { uid: fbUser.uid, ...snap.data() } : null);
+        const ref = doc(db, 'users', fbUser.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          setProfile({ uid: fbUser.uid, ...snap.data() });
+        } else {
+          // An auth account with no profile (e.g. created outside the signup
+          // form) would otherwise be stuck on a permanent loading spinner.
+          const created = {
+            email: fbUser.email || '',
+            fullName: fbUser.displayName || '',
+            phone: '',
+            studentId: await issueStudentId().catch(() => ''),
+            role: 'student',
+            subscribedToUpdates: false,
+            createdAt: serverTimestamp()
+          };
+          try {
+            await setDoc(ref, created);
+            setProfile({ uid: fbUser.uid, ...created });
+          } catch {
+            setProfile(null);
+          }
+        }
       } else {
         setProfile(null);
       }
@@ -76,15 +100,37 @@ export function AuthProvider({ children }) {
     await sendPasswordResetEmail(auth, email);
   }
 
+  /**
+   * Change the signed-in user's password. Firebase requires a recent sign-in
+   * for this, so we reauthenticate with the current password first — which
+   * doubles as a check that the person at the keyboard is the account holder.
+   */
+  async function changePassword(currentPassword, newPassword) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('You are not signed in.');
+
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+
+    // Clear the first-login flag so the prompt stops appearing.
+    if (profile?.mustChangePassword) {
+      await updateDoc(doc(db, 'users', user.uid), { mustChangePassword: false });
+      setProfile((p) => ({ ...p, mustChangePassword: false }));
+    }
+  }
+
   const value = {
     firebaseUser,
     profile,
     loading,
     isAdmin: profile?.role === 'admin',
+    mustChangePassword: !!profile?.mustChangePassword,
     signup,
     login,
     logout,
-    resetPassword
+    resetPassword,
+    changePassword
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

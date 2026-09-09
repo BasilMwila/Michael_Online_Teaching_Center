@@ -34,5 +34,11 @@ export default function ProtectedRoute({ requireAdmin = false }) {
     );
   }
 
+  // Accounts created with a temporary password can't go anywhere else until
+  // they've chosen their own.
+  if (profile.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace state={{ from: location.pathname }} />;
+  }
+
   return <Outlet />;
 }

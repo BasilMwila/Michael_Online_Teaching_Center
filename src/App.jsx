@@ -10,6 +10,7 @@ import Contact from './pages/Contact.jsx';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
+import ChangePassword from './pages/ChangePassword.jsx';
 import Dashboard from './pages/student/Dashboard.jsx';
 import CoursePlayer from './pages/student/CoursePlayer.jsx';
 import PayCourse from './pages/student/PayCourse.jsx';
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route element={<ProtectedRoute />}>
+          <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/learn/:courseId" element={<CoursePlayer />} />
           <Route path="/learn/:courseId/:lessonId" element={<CoursePlayer />} />

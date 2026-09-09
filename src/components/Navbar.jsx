@@ -93,6 +93,7 @@ export default function Navbar() {
                     <MenuItem to="/dashboard" icon="book-open" onClick={() => setMenu(false)}>Dashboard</MenuItem>
                     <MenuItem to="/bookings" icon="calendar" onClick={() => setMenu(false)}>My Bookings</MenuItem>
                     <MenuItem to="/payments" icon="credit-card" onClick={() => setMenu(false)}>My Payments</MenuItem>
+                    <MenuItem to="/change-password" icon="lock" onClick={() => setMenu(false)}>Change password</MenuItem>
                     {isAdmin && (
                       <>
                         <div className="my-1 border-t border-ink-100" />
