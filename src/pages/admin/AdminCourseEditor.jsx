@@ -5,7 +5,7 @@ import {
   getCourse, updateCourse, listLessons, createLesson, updateLesson, deleteLesson,
   getQuiz, upsertQuiz, listQuizzesByLesson
 } from '../../lib/courses.js';
-import { generateQuizForLesson } from '../../lib/aiIngest.js';
+import { generateQuizForLesson, generateNarration } from '../../lib/aiIngest.js';
 import FileUploader from '../../components/FileUploader.jsx';
 import DocumentToLessons from '../../components/DocumentToLessons.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -205,6 +205,28 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
   const [generating, setGenerating] = useState(null);
 
   const missingQuiz = lessons.filter((l) => !quizzes[l.id]?.questions?.length && l.bodyText);
+  const missingAudio = lessons.filter((l) => !l.audioUrl && l.bodyText);
+
+  async function generateMissingNarration() {
+    if (!missingAudio.length) return;
+    let made = 0;
+    const failures = [];
+    for (let i = 0; i < missingAudio.length; i++) {
+      const l = missingAudio[i];
+      setGenerating({ done: i, total: missingAudio.length, title: l.title, kind: 'narration' });
+      try {
+        const { audioUrl, seconds } = await generateNarration({ title: l.title, bodyText: l.bodyText });
+        await updateLesson(courseId, l.id, { audioUrl, audioSeconds: seconds || null });
+        made++;
+      } catch (err) {
+        failures.push(`${l.title}: ${err.message}`);
+      }
+    }
+    setGenerating(null);
+    if (made) toast.success(`${made} lesson${made === 1 ? '' : 's'} narrated`);
+    if (failures.length) toast.error(`${failures.length} could not be narrated. ${failures[0]}`);
+    onChange?.();
+  }
 
   async function generateMissingQuizzes() {
     if (!missingQuiz.length) return;
@@ -212,7 +234,7 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
     const failures = [];
     for (let i = 0; i < missingQuiz.length; i++) {
       const l = missingQuiz[i];
-      setGenerating({ done: i, total: missingQuiz.length, title: l.title });
+      setGenerating({ done: i, total: missingQuiz.length, title: l.title, kind: 'quiz' });
       try {
         const { quiz } = await generateQuizForLesson({
           title: l.title,
@@ -296,6 +318,39 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
         </button>
       </div>
 
+      {missingAudio.length > 0 && (
+        <div className="card p-5 border-l-4 border-brand-600">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <p className="font-semibold text-ink-900">
+                {missingAudio.length} lesson{missingAudio.length === 1 ? '' : 's'} without narration
+              </p>
+              <p className="text-sm text-ink-600 mt-1 max-w-xl leading-relaxed">
+                Reads each lesson&rsquo;s notes aloud and attaches the audio, so students can listen
+                instead of read. Takes a few seconds per lesson and costs a fraction of a penny.
+              </p>
+              {generating?.kind === 'narration' && (
+                <p className="text-sm text-brand-700 mt-2">
+                  Narrating {generating.done + 1} of {generating.total} &mdash; {generating.title}…
+                </p>
+              )}
+            </div>
+            <button onClick={generateMissingNarration} disabled={!!generating} className="btn-primary flex-shrink-0">
+              <Icon name="video" size={16} />
+              {generating?.kind === 'narration' ? 'Narrating…' : 'Narrate lessons with AI'}
+            </button>
+          </div>
+          {generating?.kind === 'narration' && (
+            <div className="mt-3 w-full bg-ink-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-brand-600 h-2 rounded-full transition-all"
+                style={{ width: `${(generating.done / generating.total) * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {missingQuiz.length > 0 && (
         <div className="card p-5 border-l-4 border-accent-500">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -307,18 +362,18 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
                 Students must pass a lesson&rsquo;s quiz before the next lesson unlocks. Lessons
                 with no quiz only need &ldquo;Mark complete&rdquo;.
               </p>
-              {generating && (
+              {generating?.kind === 'quiz' && (
                 <p className="text-sm text-brand-700 mt-2">
-                  Writing quiz {generating.done + 1} of {generating.total} — {generating.title}…
+                  Writing quiz {generating.done + 1} of {generating.total} &mdash; {generating.title}…
                 </p>
               )}
             </div>
             <button onClick={generateMissingQuizzes} disabled={!!generating} className="btn-primary flex-shrink-0">
               <Icon name="sparkles" size={16} />
-              {generating ? 'Generating…' : 'Generate quizzes with AI'}
+              {generating?.kind === 'quiz' ? 'Generating…' : 'Generate quizzes with AI'}
             </button>
           </div>
-          {generating && (
+          {generating?.kind === 'quiz' && (
             <div className="mt-3 w-full bg-ink-100 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-brand-600 h-2 rounded-full transition-all"
@@ -345,10 +400,19 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-ink-900 truncate">{l.title}</p>
                   <div className="flex items-center gap-3 text-xs text-ink-500 mt-0.5 flex-wrap">
-                    {l.videoUrl && <span className="inline-flex items-center gap-1"><Icon name="video" size={12} />Video</span>}
+                    {l.videoUrl ? (
+                      <span className="inline-flex items-center gap-1 text-brand-700 font-medium"><Icon name="video" size={12} />Video</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-ink-400"><Icon name="video" size={12} />No video</span>
+                    )}
                     {l.bodyText && <span className="inline-flex items-center gap-1"><Icon name="book-open" size={12} />Notes</span>}
                     {l.resources?.length > 0 && <span className="inline-flex items-center gap-1"><Icon name="book-open" size={12} />{l.resources.length} resource{l.resources.length !== 1 ? 's' : ''}</span>}
                     {l.durationMinutes && <span className="inline-flex items-center gap-1"><Icon name="clock" size={12} />{l.durationMinutes} min</span>}
+                    {l.audioUrl && (
+                      <span className="inline-flex items-center gap-1 text-brand-700 font-medium">
+                        <Icon name="play-circle" size={12} />Narrated
+                      </span>
+                    )}
                     {quizzes[l.id]?.questions?.length ? (
                       <span className="inline-flex items-center gap-1 text-brand-700 font-medium">
                         <Icon name="check" size={12} />{quizzes[l.id].questions.length}-question quiz
@@ -451,7 +515,7 @@ function LessonForm({ courseId, lesson, defaultOrder, onClose, onSubmit }) {
               onClick={() => setVideoMode('embed')}
               className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${videoMode === 'embed' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600'}`}
             >
-              YouTube / Vimeo URL
+              Paste a video link
             </button>
             <button
               type="button"
@@ -462,12 +526,18 @@ function LessonForm({ courseId, lesson, defaultOrder, onClose, onSubmit }) {
             </button>
           </div>
           {videoMode === 'embed' ? (
-            <input
-              className="input"
-              value={form.videoIsUpload ? '' : form.videoUrl}
-              onChange={(e) => setForm((s) => ({ ...s, videoUrl: e.target.value, videoIsUpload: false }))}
-              placeholder="https://www.youtube.com/watch?v=..."
-            />
+            <>
+              <input
+                className="input"
+                value={form.videoIsUpload ? '' : form.videoUrl}
+                onChange={(e) => setForm((s) => ({ ...s, videoUrl: e.target.value, videoIsUpload: false }))}
+                placeholder="https://www.youtube.com/watch?v=…  or  https://…/lesson.mp4"
+              />
+              <p className="text-xs text-ink-500 mt-1.5">
+                YouTube or Vimeo links are embedded. A direct file link (ending .mp4, .webm, .mov —
+                such as a SlideSpeak export) plays in the site&rsquo;s own player.
+              </p>
+            </>
           ) : (
             <FileUploader
               accept="video"

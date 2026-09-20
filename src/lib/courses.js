@@ -95,6 +95,24 @@ export async function upsertQuiz(courseId, lessonId, data) {
   return ref.id;
 }
 
+/**
+ * True for links that point straight at a video file (e.g. an mp4 exported
+ * from SlideSpeak, or a Cloudinary upload) rather than a page to embed.
+ * These play in a native <video> element; everything else goes in an iframe.
+ */
+export function isDirectVideoUrl(rawUrl) {
+  if (!rawUrl) return false;
+  try {
+    const u = new URL(rawUrl);
+    if (/\.(mp4|webm|ogg|ogv|mov|m4v)$/i.test(u.pathname)) return true;
+    // Cloudinary video delivery URLs, including transformed ones.
+    if (u.hostname.includes('res.cloudinary.com') && u.pathname.includes('/video/')) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export function youtubeEmbedUrl(rawUrl) {
   if (!rawUrl) return '';
   try {

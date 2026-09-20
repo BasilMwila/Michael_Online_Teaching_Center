@@ -57,6 +57,19 @@ export async function markLessonCompleted(enrollmentId, lessonId, totalLessons) 
   });
 }
 
+/** Every enrollment in the system — admin overview screens. */
+export async function listAllEnrollments() {
+  const snap = await getDocs(collection(db, 'enrollments'));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/** One student's enrollments, for the admin student detail page. */
+export async function listEnrollmentsForUser(userId) {
+  const q = query(collection(db, 'enrollments'), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 export async function listAllEnrollmentsForCourse(courseId) {
   const q = query(collection(db, 'enrollments'), where('courseId', '==', courseId));
   const snap = await getDocs(q);

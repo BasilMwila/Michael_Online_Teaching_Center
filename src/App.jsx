@@ -25,6 +25,7 @@ import AdminCourseEditor from './pages/admin/AdminCourseEditor.jsx';
 import AdminPayments from './pages/admin/AdminPayments.jsx';
 import AdminLiveSessions from './pages/admin/AdminLiveSessions.jsx';
 import AdminUsers from './pages/admin/AdminUsers.jsx';
+import AdminStudentDetail from './pages/admin/AdminStudentDetail.jsx';
 import AdminTestimonials from './pages/admin/AdminTestimonials.jsx';
 import AdminWhatsapp from './pages/admin/AdminWhatsapp.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/learn/:courseId" element={<CoursePlayer />} />
           <Route path="/learn/:courseId/:lessonId" element={<CoursePlayer />} />
+          <Route path="/learn/:courseId/:lessonId/quiz" element={<CoursePlayer />} />
           <Route path="/pay/:enrollmentId" element={<PayCourse />} />
           <Route path="/payments" element={<MyPayments />} />
           <Route path="/book-live" element={<BookLive />} />
@@ -63,6 +65,7 @@ export default function App() {
             <Route path="payments" element={<AdminPayments />} />
             <Route path="live-sessions" element={<AdminLiveSessions />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="users/:uid" element={<AdminStudentDetail />} />
             <Route path="testimonials" element={<AdminTestimonials />} />
             <Route path="whatsapp" element={<AdminWhatsapp />} />
           </Route>

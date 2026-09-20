@@ -8,6 +8,7 @@ import {
 import { requireFirebaseAdmin } from './firebaseAuth.js';
 import { extractDocumentText, SUPPORTED_EXTENSIONS } from './documentText.js';
 import { segmentIntoLessons, generateQuizForLesson } from './aiLessons.js';
+import { narrateLesson } from './narration.js';
 
 const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB) || 25;
 
@@ -421,7 +422,12 @@ r.get('/ai/status', (_req, res) => {
     adminGateReady: Boolean(process.env.FIREBASE_PROJECT_ID),
     model: process.env.OPENAI_MODEL || 'gpt-4o',
     supported: SUPPORTED_EXTENSIONS,
-    maxFileMb: MAX_UPLOAD_MB
+    maxFileMb: MAX_UPLOAD_MB,
+    narrationReady: Boolean(
+      process.env.OPENAI_API_KEY &&
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_UPLOAD_PRESET
+    )
   });
 });
 
@@ -430,7 +436,7 @@ r.post('/ai/segment', requireFirebaseAdmin, uploadDocument, async (req, res, nex
     if (!req.file) return res.status(400).json({ error: 'No file was uploaded.' });
 
     const extracted = await extractDocumentText(req.file.buffer, req.file.originalname);
-    const { modules, usage, model, chunks } = await segmentIntoLessons({
+    const { modules, usage, model, chunks, depth } = await segmentIntoLessons({
       text: extracted.text,
       courseTitle: req.body?.courseTitle || '',
       hint: req.body?.hint || ''
@@ -440,7 +446,8 @@ r.post('/ai/segment', requireFirebaseAdmin, uploadDocument, async (req, res, nex
     console.log(
       `[ai] ${req.firebaseUser.email} segmented "${req.file.originalname}" ` +
       `(${extracted.kind}, ${extracted.charCount} chars) into ${modules.length} modules / ` +
-      `${lessonCount} lessons using ${usage.calls} ${model} call(s)`
+      `${lessonCount} lessons using ${usage.calls} ${model} call(s); ` +
+      `depth avg ${depth.avgWords}w min ${depth.minWords}w, ${depth.expanded} expanded`
     );
 
     res.json({
@@ -451,7 +458,7 @@ r.post('/ai/segment', requireFirebaseAdmin, uploadDocument, async (req, res, nex
         sections: extracted.sections.length,
         charCount: extracted.charCount
       },
-      meta: { model, chunks, usage, lessonCount, moduleCount: modules.length }
+      meta: { model, chunks, usage, lessonCount, moduleCount: modules.length, depth }
     });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -469,6 +476,25 @@ r.post('/ai/quiz', requireFirebaseAdmin, async (req, res, next) => {
     const { quiz, usage } = await generateQuizForLesson({ title, bodyText, courseTitle });
     console.log(`[ai] ${req.firebaseUser.email} generated a ${quiz.questions.length}-question quiz for "${title}"`);
     res.json({ quiz, usage });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+// Read a lesson's notes aloud and store the audio, so every lesson can be
+// listened to as well as read.
+r.post('/ai/narrate', requireFirebaseAdmin, async (req, res, next) => {
+  try {
+    const { title, bodyText } = req.body || {};
+    if (!title || !bodyText) return res.status(400).json({ error: 'title and bodyText are required.' });
+
+    const result = await narrateLesson({ title, bodyText });
+    console.log(
+      `[ai] ${req.firebaseUser.email} narrated "${title}" — ` +
+      `${result.chars} chars in ${result.parts} part(s), ${Math.round(result.seconds || 0)}s`
+    );
+    res.json(result);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);

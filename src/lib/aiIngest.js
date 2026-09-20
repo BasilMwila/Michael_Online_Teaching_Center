@@ -86,6 +86,11 @@ export function generateQuizForLesson({ title, bodyText, courseTitle }) {
   return apiPost('/ai/quiz', { title, bodyText, courseTitle });
 }
 
+/** Read a lesson's notes aloud; resolves to { audioUrl, seconds, ... }. */
+export function generateNarration({ title, bodyText }) {
+  return apiPost('/ai/narrate', { title, bodyText });
+}
+
 /** Append key points to the lesson notes so they render in the player. */
 function buildBodyText(lesson) {
   if (!lesson.keyPoints?.length) return lesson.bodyText;

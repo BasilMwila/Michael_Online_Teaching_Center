@@ -3,9 +3,14 @@
 
 const API_URL = 'https://api.openai.com/v1/chat/completions';
 
-// Roughly 4 characters per token, so ~110k chars ≈ 28k tokens of input per call.
-// Long documents are split and the resulting modules stitched back together.
-const MAX_CHARS_PER_CALL = 110_000;
+// Input per call, ~4 chars per token. Deliberately modest: the output cap is
+// the real constraint, so feeding less source per call leaves far more room to
+// write each lesson in full. Long documents are split and stitched back.
+const MAX_CHARS_PER_CALL = 32_000;
+
+// Without this the API defaults to 4096 completion tokens, which forced every
+// lesson to be compressed to a few lines. gpt-4o allows up to 16384.
+const MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS) || 16_000;
 
 // Shared shape for a lesson check. `correctOptionIndex` matches what the
 // existing scoreQuiz() in the browser app expects.
@@ -108,19 +113,46 @@ Rules:
 - Titles must be descriptive and human ("Managing Workplace Risk"), never
   "Lesson 1" or "Page 4". Do not put numbers in titles; ordering is handled
   separately.
-- bodyText is the actual study material. Rewrite the source into clear teaching
-  prose a student can learn from. Keep the author's meaning, terminology,
-  definitions, examples and figures.
-- NEVER invent facts, statistics, names or examples that are not in the source
-  text. If a section is thin, keep the lesson short rather than padding it.
+- bodyText is the actual study material, and it must TEACH, not summarise.
+  This is the single most important rule. You are not writing an abstract or
+  revision notes — you are writing the lesson the student will learn from,
+  because they will never see the original document.
+
+  * Never condense. The lesson must cover its topic in at least as much depth
+    as the source, and usually MORE, because slides and handouts are terse.
+  * Expand every bullet point into full explanatory sentences. A slide reading
+    "Cost, quality, delivery" becomes a paragraph explaining what each factor
+    means, why it matters and how they trade off against each other.
+  * Carry over EVERY definition, example, figure, percentage, step, list item,
+    caveat and piece of terminology that appears in the source for that topic.
+    Losing detail is a failure, even if the result reads more neatly.
+  * Where the source states something without explaining it, explain it using
+    ordinary domain knowledge any competent instructor would supply — but never
+    invent specifics such as statistics, named cases, dates or study results.
+  * Write flowing prose in short paragraphs. Use a bulleted list only where the
+    source genuinely lists things, and still explain each item.
+  * LENGTH IS A HARD REQUIREMENT. Every bodyText must be at least 300 words.
+    A lesson drawn from several pages should run to 600-900 words. A lesson of
+    100 words is a failed lesson, however tidy it reads — the student is left
+    with slide bullets rather than teaching. Before finishing each lesson, count
+    the words and keep writing if it is under 300.
+  * To reach that depth honestly, do not repeat yourself. Explain the idea, then
+    why it matters in practice, then what it looks like when applied, then the
+    common mistake or trade-off. That structure fills the space with substance.
 - Ignore artefacts of the source file: page furniture, headers/footers, slide
   numbers, "[Page 3]" markers, tables of contents and copyright notices.
 - Write in clear British/international English suited to adult learners.
 
-Every lesson also gets a short quiz that a student must pass before moving on:
+Every lesson also gets a short quiz that a student must pass before moving on.
+The quiz is sat on a separate screen with the notes hidden, so it must test
+understanding rather than recall of a sentence the student can copy:
 - 3-4 multiple-choice questions, each with exactly four options.
 - Every question must be answerable from that lesson's bodyText alone. Never
   test something the lesson does not teach.
+- Prefer questions that apply the idea — a short scenario, choosing the right
+  action, spotting which statement is wrong, or explaining why something is so.
+- Avoid questions answerable by pattern-matching a phrase, and never quote a
+  whole sentence from the lesson as the correct option.
 - Wrong options must be plausible, not obviously silly, and all four options
   should be similar in length and style so the answer isn't guessable.
 - Vary which position holds the correct answer across questions.
@@ -168,6 +200,7 @@ async function callOpenAI({ apiKey, model, messages, signal, schema }) {
       model,
       messages,
       temperature: 0.2,
+      max_tokens: MAX_OUTPUT_TOKENS,
       response_format: { type: 'json_schema', json_schema: jsonSchema }
     })
   });
@@ -218,6 +251,81 @@ export function sanitiseQuiz(quiz) {
     passScore: Number.isFinite(passScore) ? Math.min(100, Math.max(50, passScore)) : 70,
     questions
   };
+}
+
+// Any lesson shorter than this is treated as having been summarised, and is
+// sent back to be rewritten at full depth against the original source.
+const MIN_LESSON_WORDS = Number(process.env.AI_MIN_LESSON_WORDS) || 280;
+const MAX_EXPANSIONS = Number(process.env.AI_MAX_EXPANSIONS) || 40;
+
+const EXPANSION_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['bodyText'],
+  properties: {
+    bodyText: { type: 'string', description: 'The rewritten, full-length lesson notes.' }
+  }
+};
+
+const wordCount = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
+
+/**
+ * Second pass: rewrite any lesson that came back too short. Prompting alone
+ * doesn't reliably stop the model compressing slide decks, so we measure the
+ * result and insist on a proper rewrite where it fell short.
+ */
+async function expandShortLessons({ modules, sourceText, courseTitle, apiKey, model, usage, signal }) {
+  const short = [];
+  for (const mod of modules) {
+    for (const lesson of mod.lessons) {
+      if (wordCount(lesson.bodyText) < MIN_LESSON_WORDS) short.push({ mod, lesson });
+    }
+  }
+  if (!short.length) return { expanded: 0, skipped: 0 };
+
+  const budget = short.slice(0, MAX_EXPANSIONS);
+  let expanded = 0;
+
+  for (const { mod, lesson } of budget) {
+    try {
+      const { parsed, usage: u } = await callOpenAI({
+        apiKey,
+        model,
+        signal,
+        schema: { name: 'expanded_lesson', schema: EXPANSION_SCHEMA },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content:
+              `These notes for the lesson "${lesson.title}" (module "${mod.title}"` +
+              `${courseTitle ? `, course "${courseTitle}"` : ''}) are too short — they summarise ` +
+              `instead of teaching:\n\n---\n${lesson.bodyText}\n---\n\n` +
+              `Rewrite them in full. Keep every point already there, then expand each into proper ` +
+              `teaching prose: explain the idea, why it matters, what it looks like in practice, and ` +
+              `the common mistake or trade-off. Draw only on the source material below and ordinary ` +
+              `domain knowledge — invent no statistics, cases, dates or studies. The result must be ` +
+              `at least ${MIN_LESSON_WORDS + 70} words.\n\n` +
+              `SOURCE MATERIAL:\n---\n${sourceText.slice(0, MAX_CHARS_PER_CALL)}\n---`
+          }
+        ]
+      });
+
+      const rewritten = parsed?.bodyText;
+      // Only accept the rewrite if it is genuinely longer.
+      if (rewritten && wordCount(rewritten) > wordCount(lesson.bodyText)) {
+        lesson.bodyText = rewritten;
+        expanded++;
+      }
+      usage.promptTokens += u.prompt_tokens || 0;
+      usage.completionTokens += u.completion_tokens || 0;
+      usage.calls += 1;
+    } catch {
+      // A failed expansion leaves the original lesson intact.
+    }
+  }
+
+  return { expanded, skipped: short.length - budget.length };
 }
 
 /** Merge modules from separate chunks, folding duplicates by title. */
@@ -277,7 +385,12 @@ export async function segmentIntoLessons({ text, courseTitle = '', hint = '', si
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `${context}\n\nSegment the following lecture material into modules and lessons.\n\n---\n${chunks[i]}\n---`
+          content:
+            `${context}\n\nSegment the following lecture material into modules and lessons.\n\n` +
+            `---\n${chunks[i]}\n---\n\n` +
+            `Reminder: the student never sees the document above — your bodyText IS the lesson. ` +
+            `Expand every bullet into full teaching prose and carry over every detail. ` +
+            `Each bodyText must be at least 300 words; do not summarise.`
         }
       ]
     });
@@ -295,7 +408,22 @@ export async function segmentIntoLessons({ text, courseTitle = '', hint = '', si
     for (const lesson of mod.lessons) lesson.quiz = sanitiseQuiz(lesson.quiz);
   }
 
-  return { modules, usage, model, chunks: chunks.length };
+  // Catch and repair any lesson that came back summarised.
+  const depth = await expandShortLessons({
+    modules, sourceText: text, courseTitle, apiKey, model, usage, signal
+  });
+
+  const lengths = modules.flatMap((m) => m.lessons.map((l) => wordCount(l.bodyText)));
+  const shortest = lengths.length ? Math.min(...lengths) : 0;
+  const average = lengths.length ? Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length) : 0;
+
+  return {
+    modules,
+    usage,
+    model,
+    chunks: chunks.length,
+    depth: { ...depth, minWords: shortest, avgWords: average, target: MIN_LESSON_WORDS }
+  };
 }
 
 /**
