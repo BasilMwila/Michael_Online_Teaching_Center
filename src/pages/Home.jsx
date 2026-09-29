@@ -6,7 +6,7 @@ import { formatMoney } from '../lib/format.js';
 import { STUDENT_STORIES, VIDEO_STORIES, LESSON_FEEDBACK } from '../lib/studentStories.js';
 import Icon from '../components/Icon.jsx';
 import Spinner from '../components/Spinner.jsx';
-import { StudentStoryCard, VideoStory, FeedbackBubble } from '../components/StudentStory.jsx';
+import { StudentStoryFull, VideoStory, FeedbackBubble } from '../components/StudentStory.jsx';
 
 const FEATURES = [
   { icon: 'video', title: 'Self-paced video lessons', text: 'Pre-recorded HD lessons you can pause, rewind, and revisit. Each lesson is paired with a short quiz.', tint: 'from-brand-50 to-brand-100', iconColor: 'text-brand-600' },
@@ -190,8 +190,9 @@ export default function Home() {
             <p className="mt-3 text-ink-600">Real words from people who trained with Empire Skills Academy.</p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {STUDENT_STORIES.slice(0, 3).map((s) => (
+          {/* Full stories in the students' own words — nothing trimmed. */}
+          <div className="space-y-8 max-w-4xl mx-auto">
+            {STUDENT_STORIES.map((s) => (
               <StudentStoryFull key={s.id} story={s} />
             ))}
           </div>
