@@ -70,9 +70,21 @@ export function StudentStoryFull({ story }) {
           </div>
         </div>
 
+        {/* The academy's own lead-in, kept outside the student's quoted words. */}
+        {story.intro && (
+          <p className="mt-6 text-sm text-ink-600 leading-relaxed border-l-2 border-accent-500 pl-4">
+            {story.intro}
+          </p>
+        )}
+
         <div className="mt-6 space-y-4">
           {story.paragraphs?.map((p, i) => (
-            <p key={i} className={`leading-relaxed ${story.type === 'quote' ? 'text-ink-800 italic' : 'text-ink-700'}`}>
+            <p
+              key={i}
+              // whitespace-pre-line keeps the numbered and bulleted lines the
+              // students wrote, instead of collapsing them into one block.
+              className={`leading-relaxed whitespace-pre-line ${story.type === 'quote' ? 'text-ink-800 italic' : 'text-ink-700'}`}
+            >
               {story.type === 'quote' && i === 0 ? `“${p}` : p}
               {story.type === 'quote' && i === story.paragraphs.length - 1 ? '”' : ''}
             </p>

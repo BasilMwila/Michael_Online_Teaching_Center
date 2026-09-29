@@ -192,7 +192,7 @@ export default function Home() {
 
           <div className="grid gap-6 md:grid-cols-3">
             {STUDENT_STORIES.slice(0, 3).map((s) => (
-              <StudentStoryCard key={s.id} story={s} />
+              <StudentStoryFull key={s.id} story={s} />
             ))}
           </div>
 
