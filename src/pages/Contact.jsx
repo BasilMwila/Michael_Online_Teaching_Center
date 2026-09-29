@@ -1,7 +1,11 @@
 import PageHeader from '../components/PageHeader.jsx';
+import Icon from '../components/Icon.jsx';
 
 const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'support@empireskills.example';
 const supportWhatsapp = import.meta.env.VITE_SUPPORT_WHATSAPP || '+000 000 0000';
+const whatsappMessage = encodeURIComponent(
+  "Hello Empire Skills Academy, I'd like to know more about your courses."
+);
 
 export default function Contact() {
   return (
@@ -14,15 +18,19 @@ export default function Contact() {
             <a href={`mailto:${supportEmail}`} className="text-brand-700 hover:underline">{supportEmail}</a>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 mb-1">WhatsApp</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">WhatsApp</h3>
             <a
-              href={`https://wa.me/${supportWhatsapp.replace(/\D/g, '')}`}
+              href={`https://wa.me/${supportWhatsapp.replace(/\D/g, '')}?text=${whatsappMessage}`}
               target="_blank"
               rel="noreferrer"
-              className="text-brand-700 hover:underline"
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-white font-semibold
+                         shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all"
+              style={{ backgroundColor: '#25D366' }}
             >
-              {supportWhatsapp}
+              <Icon name="whatsapp" size={20} />
+              Chat on WhatsApp
             </a>
+            <p className="text-sm text-gray-600 mt-2">{supportWhatsapp}</p>
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 mb-1">Office hours</h3>
