@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import Icon from './Icon.jsx';
-import { getAiStatus, segmentDocument, flattenModules, saveLessonsToCourse } from '../lib/aiIngest.js';
+import {
+  getAiStatus, segmentDocument, flattenModules, saveLessonsToCourse, QUIZ_LENGTHS
+} from '../lib/aiIngest.js';
 
 const STAGES = {
   idle: '',
@@ -14,6 +16,7 @@ export default function DocumentToLessons({ courseId, courseTitle, existingCount
   const [status, setStatus] = useState(null);
   const [file, setFile] = useState(null);
   const [hint, setHint] = useState('');
+  const [quizCount, setQuizCount] = useState(5);
   const [stage, setStage] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
@@ -50,6 +53,7 @@ export default function DocumentToLessons({ courseId, courseTitle, existingCount
         file,
         courseTitle,
         hint,
+        questionCount: quizCount,
         signal: abortRef.current.signal,
         onProgress: (p) => {
           setProgress(p);
@@ -191,15 +195,30 @@ export default function DocumentToLessons({ courseId, courseTitle, existingCount
           )}
         </label>
 
-        <div className="mt-4">
-          <label className="label">Anything the AI should know? (optional)</label>
-          <input
-            className="input"
-            placeholder="e.g. Skip the introduction chapter; keep the case studies as their own lessons"
-            value={hint}
-            onChange={(e) => setHint(e.target.value)}
-            disabled={busy}
-          />
+        <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-3">
+          <div>
+            <label className="label">Anything the AI should know? (optional)</label>
+            <input
+              className="input"
+              placeholder="e.g. Skip the introduction chapter; keep the case studies as their own lessons"
+              value={hint}
+              onChange={(e) => setHint(e.target.value)}
+              disabled={busy}
+            />
+          </div>
+          <div>
+            <label className="label">Quiz questions</label>
+            <select
+              className="input w-full sm:w-28"
+              value={quizCount}
+              onChange={(e) => setQuizCount(Number(e.target.value))}
+              disabled={busy}
+            >
+              {QUIZ_LENGTHS.map((n) => (
+                <option key={n} value={n}>{n} per lesson</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {busy && stage !== 'saving' && (

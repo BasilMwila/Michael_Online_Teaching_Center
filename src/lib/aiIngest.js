@@ -9,10 +9,10 @@ export function getAiStatus() {
 }
 
 /** Send a PDF/PPTX/DOCX for segmentation. Resolves to { modules, source, meta }. */
-export function segmentDocument({ file, courseTitle, hint, onProgress, signal }) {
+export function segmentDocument({ file, courseTitle, hint, questionCount, onProgress, signal }) {
   return apiUpload('/ai/segment', {
     file,
-    fields: { courseTitle, hint },
+    fields: { courseTitle, hint, questionCount },
     onProgress,
     signal
   });
@@ -82,13 +82,24 @@ export async function saveLessonsToCourse(courseId, lessons, onProgress) {
 }
 
 /** Ask the AI for a quiz covering one existing lesson. */
-export function generateQuizForLesson({ title, bodyText, courseTitle }) {
-  return apiPost('/ai/quiz', { title, bodyText, courseTitle });
+export function generateQuizForLesson({ title, bodyText, courseTitle, questionCount }) {
+  return apiPost('/ai/quiz', { title, bodyText, courseTitle, questionCount });
 }
+
+/** Question-count choices offered in the admin screens. */
+export const QUIZ_LENGTHS = [3, 5, 7, 10];
 
 /** Read a lesson's notes aloud; resolves to { audioUrl, seconds, ... }. */
 export function generateNarration({ title, bodyText }) {
   return apiPost('/ai/narrate', { title, bodyText });
+}
+
+/**
+ * Build a narrated slide video for one lesson.
+ * Takes roughly 30-60 seconds, so call it per lesson.
+ */
+export function generateLessonVideo({ title, bodyText, moduleName }) {
+  return apiPost('/ai/video', { title, bodyText, moduleName });
 }
 
 /** Append key points to the lesson notes so they render in the player. */

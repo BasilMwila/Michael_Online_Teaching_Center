@@ -59,6 +59,22 @@ function splitForSpeech(script, limit = MAX_SPEECH_CHARS) {
   return chunks;
 }
 
+/** Narrate a single passage and return the raw MP3 bytes. Shared with the video builder. */
+export async function synthesiseSpeech({ text, signal } = {}) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw Object.assign(new Error('OPENAI_API_KEY is missing on the server.'), { status: 503 });
+  }
+  return speak({
+    apiKey,
+    model: process.env.OPENAI_TTS_MODEL || 'tts-1',
+    voice: process.env.OPENAI_TTS_VOICE || 'nova',
+    speed: Number(process.env.OPENAI_TTS_SPEED) || 1.0,
+    text,
+    signal
+  });
+}
+
 async function speak({ apiKey, model, voice, speed, text, signal }) {
   const res = await fetch(SPEECH_URL, {
     method: 'POST',
@@ -77,8 +93,8 @@ async function speak({ apiKey, model, voice, speed, text, signal }) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-/** Upload an audio buffer to Cloudinary and return its URL. */
-async function uploadAudio(buffer, publicIdHint) {
+/** Upload a media buffer to Cloudinary and return its URL. */
+export async function uploadMedia(buffer, filename, mimeType, folder) {
   const cloud = process.env.CLOUDINARY_CLOUD_NAME;
   const preset = process.env.CLOUDINARY_UPLOAD_PRESET;
   if (!cloud || !preset) {
@@ -89,10 +105,10 @@ async function uploadAudio(buffer, publicIdHint) {
   }
 
   const form = new FormData();
-  // Cloudinary stores audio under its "video" resource type.
-  form.append('file', new Blob([buffer], { type: 'audio/mpeg' }), `${publicIdHint}.mp3`);
+  // Cloudinary stores audio and video alike under its "video" resource type.
+  form.append('file', new Blob([buffer], { type: mimeType }), filename);
   form.append('upload_preset', preset);
-  form.append('folder', 'lessonNarration');
+  form.append('folder', folder);
 
   const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/video/upload`, {
     method: 'POST',
@@ -139,7 +155,7 @@ export async function narrateLesson({ title, bodyText, signal } = {}) {
   // plays back as one continuous track.
   const audio = Buffer.concat(buffers);
   const slug = String(title || 'lesson').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
-  const stored = await uploadAudio(audio, `${slug}-${Date.now()}`);
+  const stored = await uploadMedia(audio, `${slug}-${Date.now()}.mp3`, 'audio/mpeg', 'lessonNarration');
 
   return {
     audioUrl: stored.url,

@@ -7,8 +7,9 @@ import {
 } from './auth.js';
 import { requireFirebaseAdmin } from './firebaseAuth.js';
 import { extractDocumentText, SUPPORTED_EXTENSIONS } from './documentText.js';
-import { segmentIntoLessons, generateQuizForLesson } from './aiLessons.js';
+import { segmentIntoLessons, generateQuizForLesson, DEFAULT_QUIZ_QUESTIONS } from './aiLessons.js';
 import { narrateLesson } from './narration.js';
+import { buildLessonVideo } from './videoLesson.js';
 
 const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB) || 25;
 
@@ -423,6 +424,7 @@ r.get('/ai/status', (_req, res) => {
     model: process.env.OPENAI_MODEL || 'gpt-4o',
     supported: SUPPORTED_EXTENSIONS,
     maxFileMb: MAX_UPLOAD_MB,
+    defaultQuizQuestions: DEFAULT_QUIZ_QUESTIONS,
     narrationReady: Boolean(
       process.env.OPENAI_API_KEY &&
       process.env.CLOUDINARY_CLOUD_NAME &&
@@ -439,7 +441,8 @@ r.post('/ai/segment', requireFirebaseAdmin, uploadDocument, async (req, res, nex
     const { modules, usage, model, chunks, depth } = await segmentIntoLessons({
       text: extracted.text,
       courseTitle: req.body?.courseTitle || '',
-      hint: req.body?.hint || ''
+      hint: req.body?.hint || '',
+      questionCount: req.body?.questionCount
     });
 
     const lessonCount = modules.reduce((n, m) => n + m.lessons.length, 0);
@@ -470,10 +473,10 @@ r.post('/ai/segment', requireFirebaseAdmin, uploadDocument, async (req, res, nex
 // before quizzes, or to replace one an author isn't happy with).
 r.post('/ai/quiz', requireFirebaseAdmin, async (req, res, next) => {
   try {
-    const { title, bodyText, courseTitle } = req.body || {};
+    const { title, bodyText, courseTitle, questionCount } = req.body || {};
     if (!title || !bodyText) return res.status(400).json({ error: 'title and bodyText are required.' });
 
-    const { quiz, usage } = await generateQuizForLesson({ title, bodyText, courseTitle });
+    const { quiz, usage } = await generateQuizForLesson({ title, bodyText, courseTitle, questionCount });
     console.log(`[ai] ${req.firebaseUser.email} generated a ${quiz.questions.length}-question quiz for "${title}"`);
     res.json({ quiz, usage });
   } catch (err) {
@@ -493,6 +496,27 @@ r.post('/ai/narrate', requireFirebaseAdmin, async (req, res, next) => {
     console.log(
       `[ai] ${req.firebaseUser.email} narrated "${title}" — ` +
       `${result.chars} chars in ${result.parts} part(s), ${Math.round(result.seconds || 0)}s`
+    );
+    res.json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+// Build a narrated slide video for one lesson. This takes tens of seconds, so
+// the browser calls it per lesson rather than for a whole course at once.
+r.post('/ai/video', requireFirebaseAdmin, async (req, res, next) => {
+  try {
+    const { title, bodyText, moduleName } = req.body || {};
+    if (!title || !bodyText) return res.status(400).json({ error: 'title and bodyText are required.' });
+
+    const started = Date.now();
+    const result = await buildLessonVideo({ title, bodyText, moduleName });
+    console.log(
+      `[ai] ${req.firebaseUser.email} built a video for "${title}" — ` +
+      `${result.slides} slides, ${Math.round(result.seconds)}s, ` +
+      `${Math.round(result.bytes / 1024)}KB in ${Math.round((Date.now() - started) / 1000)}s`
     );
     res.json(result);
   } catch (err) {

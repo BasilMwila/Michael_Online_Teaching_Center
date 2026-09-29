@@ -5,7 +5,9 @@ import {
   getCourse, updateCourse, listLessons, createLesson, updateLesson, deleteLesson,
   getQuiz, upsertQuiz, listQuizzesByLesson
 } from '../../lib/courses.js';
-import { generateQuizForLesson, generateNarration } from '../../lib/aiIngest.js';
+import {
+  generateQuizForLesson, generateNarration, generateLessonVideo, QUIZ_LENGTHS
+} from '../../lib/aiIngest.js';
 import FileUploader from '../../components/FileUploader.jsx';
 import DocumentToLessons from '../../components/DocumentToLessons.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -203,9 +205,43 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
   const [editingLesson, setEditingLesson] = useState(null);
   const [editingQuiz, setEditingQuiz] = useState(null);
   const [generating, setGenerating] = useState(null);
+  const [quizCount, setQuizCount] = useState(5);
 
   const missingQuiz = lessons.filter((l) => !quizzes[l.id]?.questions?.length && l.bodyText);
   const missingAudio = lessons.filter((l) => !l.audioUrl && l.bodyText);
+  const missingVideo = lessons.filter((l) => !l.videoUrl && l.bodyText);
+
+  async function generateMissingVideos() {
+    if (!missingVideo.length) return;
+    if (!confirm(
+      `Build a narrated slide video for ${missingVideo.length} lesson${missingVideo.length === 1 ? '' : 's'}?\n\n` +
+      `This takes roughly a minute each, so keep this tab open. ` +
+      `Estimated time: ${Math.ceil((missingVideo.length * 50) / 60)} minute(s).`
+    )) return;
+
+    let made = 0;
+    const failures = [];
+    for (let i = 0; i < missingVideo.length; i++) {
+      const l = missingVideo[i];
+      setGenerating({ done: i, total: missingVideo.length, title: l.title, kind: 'video' });
+      try {
+        const { videoUrl } = await generateLessonVideo({
+          title: l.title,
+          bodyText: l.bodyText,
+          moduleName: l.module || ''
+        });
+        // Marked as an upload so the player uses its own video element.
+        await updateLesson(courseId, l.id, { videoUrl, videoIsUpload: true });
+        made++;
+      } catch (err) {
+        failures.push(`${l.title}: ${err.message}`);
+      }
+    }
+    setGenerating(null);
+    if (made) toast.success(`${made} video${made === 1 ? '' : 's'} generated`);
+    if (failures.length) toast.error(`${failures.length} failed. ${failures[0]}`);
+    onChange?.();
+  }
 
   async function generateMissingNarration() {
     if (!missingAudio.length) return;
@@ -239,7 +275,8 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
         const { quiz } = await generateQuizForLesson({
           title: l.title,
           bodyText: l.bodyText,
-          courseTitle
+          courseTitle,
+          questionCount: quizCount
         });
         await upsertQuiz(courseId, l.id, {
           title: `Quiz: ${l.title}`,
@@ -318,6 +355,39 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
         </button>
       </div>
 
+      {missingVideo.length > 0 && (
+        <div className="card p-5 border-l-4 border-accent-500">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <p className="font-semibold text-ink-900">
+                Generate videos for {missingVideo.length} lesson{missingVideo.length === 1 ? '' : 's'}
+              </p>
+              <p className="text-sm text-ink-600 mt-1 max-w-xl leading-relaxed">
+                Builds a narrated slide video from each lesson&rsquo;s notes — branded slides with an
+                AI voiceover, made here on the site. Around a minute per lesson, so leave this tab open.
+              </p>
+              {generating?.kind === 'video' && (
+                <p className="text-sm text-brand-700 mt-2">
+                  Building video {generating.done + 1} of {generating.total} &mdash; {generating.title}…
+                </p>
+              )}
+            </div>
+            <button onClick={generateMissingVideos} disabled={!!generating} className="btn-primary flex-shrink-0">
+              <Icon name="video" size={16} />
+              {generating?.kind === 'video' ? 'Building…' : 'Generate videos with AI'}
+            </button>
+          </div>
+          {generating?.kind === 'video' && (
+            <div className="mt-3 w-full bg-ink-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-accent-500 h-2 rounded-full transition-all"
+                style={{ width: `${(generating.done / generating.total) * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {missingAudio.length > 0 && (
         <div className="card p-5 border-l-4 border-brand-600">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -368,10 +438,25 @@ function LessonsManager({ courseId, courseTitle, lessons, quizzes = {}, onChange
                 </p>
               )}
             </div>
-            <button onClick={generateMissingQuizzes} disabled={!!generating} className="btn-primary flex-shrink-0">
-              <Icon name="sparkles" size={16} />
-              {generating?.kind === 'quiz' ? 'Generating…' : 'Generate quizzes with AI'}
-            </button>
+            <div className="flex items-end gap-2 flex-shrink-0">
+              <div>
+                <label className="block text-xs font-medium text-ink-600 mb-1">Questions</label>
+                <select
+                  className="input py-2 w-24"
+                  value={quizCount}
+                  onChange={(e) => setQuizCount(Number(e.target.value))}
+                  disabled={!!generating}
+                >
+                  {QUIZ_LENGTHS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <button onClick={generateMissingQuizzes} disabled={!!generating} className="btn-primary">
+                <Icon name="sparkles" size={16} />
+                {generating?.kind === 'quiz' ? 'Generating…' : 'Generate quizzes with AI'}
+              </button>
+            </div>
           </div>
           {generating?.kind === 'quiz' && (
             <div className="mt-3 w-full bg-ink-100 rounded-full h-2 overflow-hidden">

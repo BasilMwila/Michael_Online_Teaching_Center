@@ -25,7 +25,7 @@ const QUIZ_SCHEMA = {
     },
     questions: {
       type: 'array',
-      description: '3-4 multiple-choice questions answerable from this lesson alone.',
+      description: 'The multiple-choice questions, answerable from this lesson alone.',
       items: {
         type: 'object',
         additionalProperties: false,
@@ -100,7 +100,19 @@ const LESSON_SCHEMA = {
   }
 };
 
-const SYSTEM_PROMPT = `
+// How many questions each lesson quiz carries. Callers may override per request;
+// the server default can be changed with AI_QUIZ_QUESTIONS.
+export const DEFAULT_QUIZ_QUESTIONS = Number(process.env.AI_QUIZ_QUESTIONS) || 5;
+const MIN_QUIZ_QUESTIONS = 3;
+const MAX_QUIZ_QUESTIONS = 12;
+
+export function clampQuestionCount(n) {
+  const value = Math.round(Number(n));
+  if (!Number.isFinite(value)) return DEFAULT_QUIZ_QUESTIONS;
+  return Math.min(MAX_QUIZ_QUESTIONS, Math.max(MIN_QUIZ_QUESTIONS, value));
+}
+
+const SYSTEM_PROMPT_TEMPLATE = `
 You are a curriculum designer for an online training academy. You convert raw
 lecture material (extracted from PDFs, slide decks or documents) into a clean,
 study-ready course outline.
@@ -146,9 +158,13 @@ Rules:
 Every lesson also gets a short quiz that a student must pass before moving on.
 The quiz is sat on a separate screen with the notes hidden, so it must test
 understanding rather than recall of a sentence the student can copy:
-- 3-4 multiple-choice questions, each with exactly four options.
+- EXACTLY {{QUIZ_COUNT}} multiple-choice questions, each with exactly four
+  options. Not fewer. If the lesson feels thin for {{QUIZ_COUNT}} questions,
+  cover it from more angles — definitions, application, comparison, sequence,
+  and common misunderstandings — rather than writing fewer.
 - Every question must be answerable from that lesson's bodyText alone. Never
   test something the lesson does not teach.
+- Do not ask the same thing twice in different words.
 - Prefer questions that apply the idea — a short scenario, choosing the right
   action, spotting which statement is wrong, or explaining why something is so.
 - Avoid questions answerable by pattern-matching a phrase, and never quote a
@@ -159,6 +175,11 @@ understanding rather than recall of a sentence the student can copy:
 - Set passScore to 70 unless the material is safety- or compliance-critical,
   where 80 is appropriate.
 `.trim();
+
+/** The system prompt with the requested quiz length baked in. */
+function systemPrompt(questionCount = DEFAULT_QUIZ_QUESTIONS) {
+  return SYSTEM_PROMPT_TEMPLATE.replaceAll('{{QUIZ_COUNT}}', String(clampQuestionCount(questionCount)));
+}
 
 /** Split text into chunks at paragraph boundaries, each under `limit` chars. */
 function chunkText(text, limit = MAX_CHARS_PER_CALL) {
@@ -274,7 +295,7 @@ const wordCount = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).len
  * doesn't reliably stop the model compressing slide decks, so we measure the
  * result and insist on a proper rewrite where it fell short.
  */
-async function expandShortLessons({ modules, sourceText, courseTitle, apiKey, model, usage, signal }) {
+async function expandShortLessons({ modules, sourceText, courseTitle, apiKey, model, usage, signal, questionCount }) {
   const short = [];
   for (const mod of modules) {
     for (const lesson of mod.lessons) {
@@ -294,7 +315,7 @@ async function expandShortLessons({ modules, sourceText, courseTitle, apiKey, mo
         signal,
         schema: { name: 'expanded_lesson', schema: EXPANSION_SCHEMA },
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt(questionCount) },
           {
             role: 'user',
             content:
@@ -353,7 +374,10 @@ function mergeModules(batches) {
  * Segment extracted document text into modules and lessons.
  * Returns { modules, usage: { promptTokens, completionTokens, calls } }.
  */
-export async function segmentIntoLessons({ text, courseTitle = '', hint = '', signal } = {}) {
+export async function segmentIntoLessons({
+  text, courseTitle = '', hint = '', signal, questionCount = DEFAULT_QUIZ_QUESTIONS
+} = {}) {
+  const quizCount = clampQuestionCount(questionCount);
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw Object.assign(
@@ -382,7 +406,7 @@ export async function segmentIntoLessons({ text, courseTitle = '', hint = '', si
       model,
       signal,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt(quizCount) },
         {
           role: 'user',
           content:
@@ -390,7 +414,8 @@ export async function segmentIntoLessons({ text, courseTitle = '', hint = '', si
             `---\n${chunks[i]}\n---\n\n` +
             `Reminder: the student never sees the document above — your bodyText IS the lesson. ` +
             `Expand every bullet into full teaching prose and carry over every detail. ` +
-            `Each bodyText must be at least 300 words; do not summarise.`
+            `Each bodyText must be at least 300 words; do not summarise. ` +
+            `Every quiz must contain exactly ${quizCount} questions.`
         }
       ]
     });
@@ -410,7 +435,7 @@ export async function segmentIntoLessons({ text, courseTitle = '', hint = '', si
 
   // Catch and repair any lesson that came back summarised.
   const depth = await expandShortLessons({
-    modules, sourceText: text, courseTitle, apiKey, model, usage, signal
+    modules, sourceText: text, courseTitle, apiKey, model, usage, signal, questionCount: quizCount
   });
 
   const lengths = modules.flatMap((m) => m.lessons.map((l) => wordCount(l.bodyText)));
@@ -430,7 +455,10 @@ export async function segmentIntoLessons({ text, courseTitle = '', hint = '', si
  * Build a quiz for one existing lesson from its own notes.
  * Used to backfill lessons that were created before quizzes existed.
  */
-export async function generateQuizForLesson({ title, bodyText, courseTitle = '' } = {}) {
+export async function generateQuizForLesson({
+  title, bodyText, courseTitle = '', questionCount = DEFAULT_QUIZ_QUESTIONS
+} = {}) {
+  const quizCount = clampQuestionCount(questionCount);
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw Object.assign(
@@ -451,18 +479,19 @@ export async function generateQuizForLesson({ title, bodyText, courseTitle = '' 
     model: process.env.OPENAI_MODEL || 'gpt-4o',
     schema: { name: 'lesson_quiz', schema: QUIZ_SCHEMA },
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt(quizCount) },
       {
         role: 'user',
         content:
           `${courseTitle ? `Course: "${courseTitle}".\n` : ''}` +
-          `Write the quiz for the lesson "${title}". Questions must be answerable ` +
-          `from these lesson notes alone:\n\n---\n${text.slice(0, MAX_CHARS_PER_CALL)}\n---`
+          `Write the quiz for the lesson "${title}". It must contain exactly ${quizCount} ` +
+          `questions, all answerable from these lesson notes alone:\n\n---\n` +
+          `${text.slice(0, MAX_CHARS_PER_CALL)}\n---`
       }
     ]
   });
 
   const quiz = sanitiseQuiz(parsed);
   if (!quiz) throw new Error(`Could not build a usable quiz for "${title}".`);
-  return { quiz, usage };
+  return { quiz, usage, requested: quizCount, produced: quiz.questions.length };
 }
