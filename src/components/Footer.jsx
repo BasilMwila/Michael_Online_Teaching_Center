@@ -3,6 +3,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { subscribeToNewsletter } from '../lib/users.js';
 import Icon from './Icon.jsx';
+import { SERVICE_NAV } from '../lib/categories.js';
 
 export default function Footer() {
   const [email, setEmail] = useState('');
@@ -25,6 +26,7 @@ export default function Footer() {
 
   const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'support@empireskills.example';
   const supportWA = import.meta.env.VITE_SUPPORT_WHATSAPP || '+000 000 0000';
+  const supportPhone = import.meta.env.VITE_SUPPORT_PHONE || '';
 
   return (
     <footer className="mt-20">
@@ -71,8 +73,9 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-display font-semibold mb-4 text-sm uppercase tracking-wider">Explore</h4>
           <ul className="space-y-3 text-sm">
-            <FooterLink to="/services">Services</FooterLink>
-            <FooterLink to="/courses">Courses</FooterLink>
+            {SERVICE_NAV.map((s) => (
+              <FooterLink key={s.category} to={s.to}>{s.category}</FooterLink>
+            ))}
             <FooterLink to="/testimonials">Testimonials</FooterLink>
             <FooterLink to="/about">About</FooterLink>
             <FooterLink to="/contact">Contact</FooterLink>
@@ -87,6 +90,13 @@ export default function Footer() {
                 <Icon name="mail" size={14} /><span className="truncate">{supportEmail}</span>
               </a>
             </li>
+            {supportPhone && (
+              <li>
+                <a href={`tel:${supportPhone.replace(/\s/g, '')}`} className="flex items-center gap-2 hover:text-white transition">
+                  <Icon name="phone" size={14} />{supportPhone}
+                </a>
+              </li>
+            )}
             <li>
               <a
                 href={`https://wa.me/${supportWA.replace(/\D/g, '')}`}

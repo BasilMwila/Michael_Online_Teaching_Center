@@ -3,6 +3,7 @@ import Icon from '../components/Icon.jsx';
 
 const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'support@empireskills.example';
 const supportWhatsapp = import.meta.env.VITE_SUPPORT_WHATSAPP || '+000 000 0000';
+const supportPhone = import.meta.env.VITE_SUPPORT_PHONE || '';
 const whatsappMessage = encodeURIComponent(
   "Hello Empire Skills Academy, I'd like to know more about your courses."
 );
@@ -17,6 +18,14 @@ export default function Contact() {
             <h3 className="font-semibold text-gray-900 mb-1">Email</h3>
             <a href={`mailto:${supportEmail}`} className="text-brand-700 hover:underline">{supportEmail}</a>
           </div>
+          {supportPhone && (
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
+              <a href={`tel:${supportPhone.replace(/\s/g, '')}`} className="text-brand-700 hover:underline">
+                {supportPhone}
+              </a>
+            </div>
+          )}
           <div>
             <h3 className="font-semibold text-gray-900 mb-2">WhatsApp</h3>
             <a

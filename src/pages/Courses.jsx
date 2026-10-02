@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { listPublishedCourses } from '../lib/courses.js';
-import { SERVICE_CATEGORIES } from '../lib/categories.js';
+import { SERVICE_CATEGORIES, SERVICE_BLURBS } from '../lib/categories.js';
 import { formatMoney } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Spinner from '../components/Spinner.jsx';
@@ -45,7 +45,11 @@ export default function Courses() {
 
   return (
     <div>
-      <PageHeader title="All courses" subtitle="Browse our complete catalog. Self-paced or live — learn what excites you." />
+      {/* Each service tab lands here with its category, so title the page for it. */}
+      <PageHeader
+        title={category === 'all' ? 'All courses' : category}
+        subtitle={SERVICE_BLURBS[category] || 'Browse our complete catalog. Self-paced or live — learn what excites you.'}
+      />
       <div className="max-w-7xl mx-auto container-px py-10">
         <div className="card p-4 mb-8 flex flex-col md:flex-row gap-3">
           <input

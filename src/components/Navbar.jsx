@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import toast from 'react-hot-toast';
 import Icon from './Icon.jsx';
+import { SERVICE_NAV } from '../lib/categories.js';
 
+// Each service is its own tab, sitting between Home and the rest.
 const publicLinks = [
   { to: '/', label: 'Home' },
-  { to: '/services', label: 'Services' },
-  { to: '/courses', label: 'Courses' },
+  ...SERVICE_NAV.map((s) => ({ to: s.to, label: s.navLabel, category: s.category })),
   { to: '/testimonials', label: 'Testimonials' },
   { to: '/about', label: 'About' },
   { to: '/contact', label: 'Contact' }
@@ -19,6 +20,19 @@ export default function Navbar() {
   const [menu, setMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // NavLink ignores the query string, so every service tab would light up at
+  // once on /courses. Decide the active tab from the category param instead.
+  const activeCategory = searchParams.get('category');
+  function isLinkActive(link) {
+    if (link.category) {
+      if (location.pathname !== '/courses') return false;
+      return link.category === 'Courses' ? !activeCategory : activeCategory === link.category;
+    }
+    return link.to === '/' ? location.pathname === '/' : location.pathname.startsWith(link.to);
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -47,29 +61,28 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
-          {publicLinks.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              end={l.to === '/'}
-              className={({ isActive }) =>
-                `px-3.5 py-2 rounded-md text-sm font-medium transition relative ${
-                  isActive ? 'text-brand-700' : 'text-ink-600 hover:text-ink-900'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {l.label}
-                  {isActive && <span className="absolute inset-x-3 -bottom-0.5 h-0.5 bg-gradient-to-r from-brand-500 to-accent-400 rounded-full" />}
-                </>
-              )}
-            </NavLink>
-          ))}
+        {/* Eight tabs need the wider breakpoint; below this the menu takes over. */}
+        <nav className="hidden lg:flex items-center gap-0.5">
+          {publicLinks.map((l) => {
+            const active = isLinkActive(l);
+            return (
+              <Link
+                key={l.label}
+                to={l.to}
+                className={`px-2.5 py-2 rounded-md text-[13px] font-medium transition relative whitespace-nowrap ${
+                  active ? 'text-brand-700' : 'text-ink-600 hover:text-ink-900'
+                }`}
+              >
+                {l.label}
+                {active && (
+                  <span className="absolute inset-x-2 -bottom-0.5 h-0.5 bg-gradient-to-r from-brand-500 to-accent-400 rounded-full" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2">
           {firebaseUser ? (
             <div className="relative">
               <button
@@ -121,7 +134,7 @@ export default function Navbar() {
         </div>
 
         <button
-          className="md:hidden p-2 rounded-lg hover:bg-ink-100 text-ink-700"
+          className="lg:hidden p-2 rounded-lg hover:bg-ink-100 text-ink-700"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
         >
@@ -136,22 +149,20 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="md:hidden border-t bg-white animate-fade-in">
+        <div className="lg:hidden border-t bg-white animate-fade-in">
           <div className="px-4 py-3 space-y-1">
             {publicLinks.map((l) => (
-              <NavLink
-                key={l.to}
+              <Link
+                key={l.label}
                 to={l.to}
-                end={l.to === '/'}
                 onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  `block px-3 py-2.5 rounded-lg text-base font-medium ${
-                    isActive ? 'text-brand-700 bg-brand-50' : 'text-ink-700 hover:bg-ink-50'
-                  }`
-                }
+                className={`block px-3 py-2.5 rounded-lg text-base font-medium ${
+                  isLinkActive(l) ? 'text-brand-700 bg-brand-50' : 'text-ink-700 hover:bg-ink-50'
+                }`}
               >
-                {l.label}
-              </NavLink>
+                {/* The menu has room for the full service name. */}
+                {l.category || l.label}
+              </Link>
             ))}
             <div className="border-t border-ink-100 pt-3 mt-3 space-y-1">
               {firebaseUser ? (
