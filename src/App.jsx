@@ -3,6 +3,7 @@ import Layout from './components/Layout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Home from './pages/Home.jsx';
 import Courses from './pages/Courses.jsx';
+import Services from './pages/Services.jsx';
 import CourseDetail from './pages/CourseDetail.jsx';
 import Testimonials from './pages/Testimonials.jsx';
 import About from './pages/About.jsx';
@@ -35,6 +36,7 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/services" element={<Services />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:courseId" element={<CourseDetail />} />
         <Route path="/testimonials" element={<Testimonials />} />

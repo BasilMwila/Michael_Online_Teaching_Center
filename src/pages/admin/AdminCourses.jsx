@@ -5,6 +5,7 @@ import { listAllCourses, createCourse, deleteCourse } from '../../lib/courses.js
 import { formatMoney } from '../../lib/format.js';
 import Spinner from '../../components/Spinner.jsx';
 import FileUploader from '../../components/FileUploader.jsx';
+import { categoryOptions } from '../../lib/categories.js';
 
 export default function AdminCourses() {
   const [items, setItems] = useState(null);
@@ -130,7 +131,16 @@ function NewCourseModal({ onClose, onSubmit }) {
           </div>
           <div>
             <label className="label">Category</label>
-            <input value={form.category} onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))} className="input" placeholder="e.g. Programming" />
+            <select
+              value={form.category}
+              onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))}
+              className="input"
+            >
+              <option value="">— Select a category —</option>
+              {categoryOptions(form.category).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label">Mode</label>

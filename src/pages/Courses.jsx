@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { listPublishedCourses } from '../lib/courses.js';
+import { SERVICE_CATEGORIES } from '../lib/categories.js';
 import { formatMoney } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Spinner from '../components/Spinner.jsx';
@@ -11,15 +12,25 @@ export default function Courses() {
   const [courses, setCourses] = useState(null);
   const [search, setSearch] = useState('');
   const [mode, setMode] = useState('all');
-  const [category, setCategory] = useState('all');
+  // The Services page links here with ?category=… so a service opens pre-filtered.
+  const [params, setParams] = useSearchParams();
+  const category = params.get('category') || 'all';
+
+  function setCategory(value) {
+    const next = new URLSearchParams(params);
+    if (value === 'all') next.delete('category');
+    else next.set('category', value);
+    setParams(next, { replace: true });
+  }
 
   useEffect(() => {
     listPublishedCourses().then(setCourses).catch(() => setCourses([]));
   }, []);
 
+  // Always offer the standard services, plus anything a course already uses.
   const categories = useMemo(() => {
-    if (!courses) return [];
-    return Array.from(new Set(courses.map((c) => c.category).filter(Boolean)));
+    const used = courses ? courses.map((c) => c.category).filter(Boolean) : [];
+    return Array.from(new Set([...SERVICE_CATEGORIES, ...used]));
   }, [courses]);
 
   const filtered = useMemo(() => {

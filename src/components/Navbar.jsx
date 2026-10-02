@@ -6,6 +6,7 @@ import Icon from './Icon.jsx';
 
 const publicLinks = [
   { to: '/', label: 'Home' },
+  { to: '/services', label: 'Services' },
   { to: '/courses', label: 'Courses' },
   { to: '/testimonials', label: 'Testimonials' },
   { to: '/about', label: 'About' },

@@ -8,6 +8,7 @@ import {
 import {
   generateQuizForLesson, generateNarration, generateLessonVideo, QUIZ_LENGTHS
 } from '../../lib/aiIngest.js';
+import { categoryOptions } from '../../lib/categories.js';
 import FileUploader from '../../components/FileUploader.jsx';
 import DocumentToLessons from '../../components/DocumentToLessons.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -143,7 +144,16 @@ function CourseDetailsForm({ course, onSave }) {
         </div>
         <div>
           <label className="label">Category</label>
-          <input className="input" value={form.category} onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))} />
+          <select
+            className="input"
+            value={form.category}
+            onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))}
+          >
+            <option value="">— Select a category —</option>
+            {categoryOptions(form.category).map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="label">Mode</label>

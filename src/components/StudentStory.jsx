@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Icon from './Icon.jsx';
 
 function Portrait({ story, size = 'md' }) {
@@ -52,6 +53,13 @@ export function StudentStoryCard({ story }) {
 
 /** Full story — used on the Testimonials page. */
 export function StudentStoryFull({ story }) {
+  // Long stories are kept whole but folded down, so a page of them stays
+  // readable. Nothing is cut — "Read more" opens the rest in place.
+  const [expanded, setExpanded] = useState(false);
+  const paragraphs = story.paragraphs || [];
+  const hasMore = paragraphs.length > 1 || story.outcomes?.length > 0;
+  const shown = expanded ? paragraphs : paragraphs.slice(0, 1);
+
   return (
     <article className="card overflow-hidden">
       <div className="h-1.5 flex" aria-hidden="true">
@@ -78,20 +86,23 @@ export function StudentStoryFull({ story }) {
         )}
 
         <div className="mt-6 space-y-4">
-          {story.paragraphs?.map((p, i) => (
+          {shown.map((p, i) => (
             <p
               key={i}
               // whitespace-pre-line keeps the numbered and bulleted lines the
               // students wrote, instead of collapsing them into one block.
-              className={`leading-relaxed whitespace-pre-line ${story.type === 'quote' ? 'text-ink-800 italic' : 'text-ink-700'}`}
+              // Collapsed, the opening paragraph is clamped to a few lines.
+              className={`leading-relaxed whitespace-pre-line ${
+                story.type === 'quote' ? 'text-ink-800 italic' : 'text-ink-700'
+              } ${!expanded && i === 0 ? 'line-clamp-4' : ''}`}
             >
               {story.type === 'quote' && i === 0 ? `“${p}` : p}
-              {story.type === 'quote' && i === story.paragraphs.length - 1 ? '”' : ''}
+              {story.type === 'quote' && expanded && i === paragraphs.length - 1 ? '”' : ''}
             </p>
           ))}
         </div>
 
-        {story.outcomes?.length > 0 && (
+        {expanded && story.outcomes?.length > 0 && (
           <ul className="mt-6 space-y-2.5">
             {story.outcomes.map((o) => (
               <li key={o} className="flex gap-3 text-ink-700 leading-relaxed">
@@ -100,6 +111,21 @@ export function StudentStoryFull({ story }) {
               </li>
             ))}
           </ul>
+        )}
+
+        {hasMore && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800 transition"
+          >
+            {expanded ? 'Show less' : `Read ${story.name.split(' ')[0]}’s full story`}
+            <Icon
+              name="arrow-right"
+              size={14}
+              className={`transition-transform ${expanded ? '-rotate-90' : 'rotate-90'}`}
+            />
+          </button>
         )}
 
         <div className="mt-7 pt-5 border-t border-ink-100">

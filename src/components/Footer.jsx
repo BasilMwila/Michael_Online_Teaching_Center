@@ -71,6 +71,7 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-display font-semibold mb-4 text-sm uppercase tracking-wider">Explore</h4>
           <ul className="space-y-3 text-sm">
+            <FooterLink to="/services">Services</FooterLink>
             <FooterLink to="/courses">Courses</FooterLink>
             <FooterLink to="/testimonials">Testimonials</FooterLink>
             <FooterLink to="/about">About</FooterLink>

@@ -6,6 +6,7 @@ import {
 } from '../../lib/liveSessions.js';
 import { formatDateTime, formatMoney, statusBadgeClass } from '../../lib/format.js';
 import Spinner from '../../components/Spinner.jsx';
+import { categoryOptions } from '../../lib/categories.js';
 
 const defaultForm = {
   type: 'one_on_one',
@@ -168,7 +169,16 @@ function SessionForm({ initial, onClose, onSubmit }) {
         </div>
         <div>
           <label className="label">Category</label>
-          <input className="input" value={form.category} onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))} placeholder="e.g. Business English" />
+          <select
+            className="input"
+            value={form.category}
+            onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))}
+          >
+            <option value="">— Select a category —</option>
+            {categoryOptions(form.category).map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="label">Capacity</label>
