@@ -19,29 +19,42 @@ export default function CourseDetail() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setCourse(null);
+    setLessons([]);
+    setEnrollment(null);
     (async () => {
       try {
         const c = await getCourse(courseId);
+        if (cancelled) return;
         setCourse(c);
-        if (c) {
+        // Lesson documents require authentication; the course itself is public.
+        if (c && firebaseUser) {
           const ls = await listLessons(courseId);
+          if (cancelled) return;
           setLessons(ls);
           if (firebaseUser) {
             const en = await getEnrollmentForCourse(firebaseUser.uid, courseId);
+            if (cancelled) return;
             setEnrollment(en);
           }
         }
+      } catch (err) {
+        if (!cancelled && err.code !== 'permission-denied') toast.error('Could not load course details. Please refresh to try again.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, [courseId, firebaseUser]);
 
   if (loading) return <Spinner />;
   if (!course) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <h2 className="text-2xl font-bold mb-2">Course not found</h2>
+        <h2 className="text-2xl font-bold mb-2">Course unavailable</h2>
+        <p className="text-gray-600 mb-4">This course may not be published yet or is no longer available.</p>
         <Link to="/courses" className="btn-primary">Browse courses</Link>
       </div>
     );
@@ -89,7 +102,7 @@ export default function CourseDetail() {
             <div className="mt-6 flex flex-wrap gap-6 text-sm text-brand-100">
               {course.instructorName && <span className="inline-flex items-center gap-1.5"><Icon name="users" size={14} />{course.instructorName}</span>}
               {course.durationHours && <span className="inline-flex items-center gap-1.5"><Icon name="clock" size={14} />{course.durationHours} hours</span>}
-              <span className="inline-flex items-center gap-1.5"><Icon name="book-open" size={14} />{lessons.length} lessons</span>
+              {firebaseUser && <span className="inline-flex items-center gap-1.5"><Icon name="book-open" size={14} />{lessons.length} lessons</span>}
             </div>
           </div>
           <aside className="card text-gray-900 p-6 h-fit">
@@ -138,7 +151,9 @@ export default function CourseDetail() {
 
           <section>
             <h2 className="text-2xl font-display font-bold mb-3">Lessons</h2>
-            {lessons.length === 0 ? (
+            {!firebaseUser ? (
+              <p className="text-gray-500">Sign in to view the lesson list and enroll in this course.</p>
+            ) : lessons.length === 0 ? (
               <p className="text-gray-500">Lesson list will appear here when the course launches.</p>
             ) : (
               <ol className="card divide-y">

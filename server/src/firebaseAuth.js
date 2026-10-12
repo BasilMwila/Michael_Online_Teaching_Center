@@ -82,6 +82,29 @@ export async function verifyFirebaseToken(idToken) {
  * empty, so a misconfigured deploy cannot leave the endpoint wide open.
  */
 /**
+ * Express middleware: any signed-in Firebase user. Used for student-facing
+ * endpoints such as starting a mobile money payment.
+ */
+export async function requireFirebaseUser(req, res, next) {
+  try {
+    if (!process.env.FIREBASE_PROJECT_ID) {
+      return res.status(503).json({ error: 'Payments are not configured on the server.' });
+    }
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!token) return res.status(401).json({ error: 'Please sign in first.' });
+
+    const payload = await verifyFirebaseToken(token);
+    req.firebaseUser = {
+      uid: payload.user_id || payload.sub,
+      email: String(payload.email || '').toLowerCase()
+    };
+    next();
+  } catch (err) {
+    res.status(err.status || 401).json({ error: err.message || 'Not authorised' });
+  }
+}
+
+/**
  * Express middleware: the caller must present a valid Firebase ID token AND be
  * an administrator — either because their profile role is "admin", or because
  * their email is listed in ADMIN_EMAILS (a break-glass override that works even

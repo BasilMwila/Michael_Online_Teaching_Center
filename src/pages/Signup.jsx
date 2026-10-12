@@ -90,7 +90,7 @@ export default function Signup() {
           </button>
         </form>
         <p className="text-sm text-center text-gray-600 mt-5">
-          Already have an account? <Link to="/login" className="text-brand-700 font-semibold">Log in</Link>
+          Already have an account? <Link to="/login" state={location.state} className="text-brand-700 font-semibold">Log in</Link>
         </p>
       </div>
     </div>

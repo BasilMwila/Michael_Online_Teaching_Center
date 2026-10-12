@@ -5,7 +5,12 @@ import {
   hashPassword, checkPassword, signToken, issueStudentId,
   publicUser, requireAuth, requireAdmin
 } from './auth.js';
-import { requireFirebaseAdmin } from './firebaseAuth.js';
+import { requireFirebaseAdmin, requireFirebaseUser } from './firebaseAuth.js';
+import {
+  initiateMobileMoneyCollection, getCollection, buildReference,
+  verifyWebhookSignature, lencoConfigured, OPERATORS
+} from './lenco.js';
+import { getUsdToZmw, toKwacha } from './fxRate.js';
 import { extractDocumentText, SUPPORTED_EXTENSIONS } from './documentText.js';
 import { segmentIntoLessons, generateQuizForLesson, DEFAULT_QUIZ_QUESTIONS } from './aiLessons.js';
 import { narrateLesson } from './narration.js';
@@ -523,6 +528,161 @@ r.post('/ai/video', requireFirebaseAdmin, async (req, res, next) => {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }
+});
+
+// ---------- Mobile money (Lenco) ----------
+
+/** Save or refresh our copy of a Lenco collection. */
+function recordCollection(reference, data, extra = {}) {
+  const existing = db.prepare('SELECT reference FROM collections WHERE reference = ?').get(reference);
+  const row = {
+    reference,
+    lencoReference: data?.lencoReference || null,
+    status: data?.status || 'pending',
+    reasonForFailure: data?.reasonForFailure || '',
+    settlementStatus: data?.settlementStatus || '',
+    operatorTransactionId: data?.mobileMoneyDetails?.operatorTransactionId || '',
+    currency: data?.currency || 'ZMW',
+    completedAt: data?.completedAt || null,
+    raw: data || {},
+    updatedAt: now(),
+    ...extra
+  };
+  if (existing) update('collections', reference, row);
+  else insert('collections', { ...row, createdAt: now() });
+  return getById('collections', reference);
+}
+
+r.get('/payments/mobile-money/status', async (_req, res) => {
+  let fx = null;
+  try {
+    fx = await getUsdToZmw();
+  } catch {
+    fx = null;
+  }
+  res.json({
+    configured: lencoConfigured(),
+    operators: OPERATORS,
+    usdToZmw: fx?.rate || null,
+    rateSource: fx?.source || null,
+    rateFetchedAt: fx?.fetchedAt || null,
+    rateStale: fx?.stale || false
+  });
+});
+
+/** Live USD -> ZMW rate, for showing Kwacha prices around the site. */
+r.get('/fx/usd-zmw', async (_req, res, next) => {
+  try {
+    res.json(await getUsdToZmw());
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+/** Start a mobile money charge; the student then approves it on their phone. */
+r.post('/payments/mobile-money/initiate', requireFirebaseUser, async (req, res, next) => {
+  try {
+    const { amountCents, currency, phone, operator, enrollmentId, courseId, courseTitle } = req.body || {};
+    if (!amountCents || !phone || !operator) {
+      return res.status(400).json({ error: 'amountCents, phone and operator are required.' });
+    }
+
+    // Work out the Kwacha figure here — never charge a number the browser sent.
+    const { amountZmw, rate, source } = await toKwacha(amountCents, currency || 'USD');
+
+    const reference = buildReference('ESA');
+    const data = await initiateMobileMoneyCollection({
+      amount: amountZmw, reference, phone, operator
+    });
+
+    recordCollection(reference, data, {
+      firebaseUid: req.firebaseUser.uid,
+      studentEmail: req.firebaseUser.email,
+      enrollmentId: enrollmentId || null,
+      courseId: courseId || null,
+      courseTitle: courseTitle || '',
+      amount: amountZmw,
+      currency: 'ZMW',
+      phone: String(phone),
+      operator: String(operator).toLowerCase()
+    });
+
+    console.log(
+      `[pay] ${req.firebaseUser.email} started ${operator} collection ${reference} ` +
+      `for K${amountZmw} (rate ${rate} via ${source}) — status ${data?.status}`
+    );
+
+    res.json({
+      reference,
+      amountZmw,
+      rate,
+      status: data?.status,
+      lencoReference: data?.lencoReference || null,
+      // "pay-offline" means the prompt is now on the customer's handset.
+      needsApproval: data?.status === 'pay-offline'
+    });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+/** Poll a collection. Students may only read their own. */
+r.get('/payments/mobile-money/:reference', requireFirebaseUser, async (req, res, next) => {
+  try {
+    const { reference } = req.params;
+    const mine = getById('collections', reference);
+    if (!mine || mine.firebaseUid !== req.firebaseUser.uid) {
+      return res.status(404).json({ error: 'Payment not found.' });
+    }
+
+    // Settled one way or the other — no need to ask Lenco again.
+    if (mine.status === 'successful' || mine.status === 'failed') {
+      return res.json({ reference, status: mine.status, reasonForFailure: mine.reasonForFailure });
+    }
+
+    const data = await getCollection(reference);
+    const row = recordCollection(reference, data);
+    res.json({
+      reference,
+      status: row.status,
+      reasonForFailure: row.reasonForFailure,
+      operatorTransactionId: row.operatorTransactionId
+    });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+/**
+ * Lenco calls this when a collection settles. Mounted with a raw body parser in
+ * index.js so the signature can be checked against the exact bytes sent.
+ */
+r.post('/payments/lenco/webhook', (req, res) => {
+  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body || {}));
+  if (!verifyWebhookSignature(raw, req.headers['x-lenco-signature'])) {
+    console.warn('[pay] rejected a webhook with a bad signature');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(raw.toString('utf8'));
+  } catch {
+    return res.status(400).json({ error: 'Malformed payload' });
+  }
+
+  const data = event?.data || {};
+  const reference = data.reference;
+  if (reference && getById('collections', reference)) {
+    recordCollection(reference, data);
+    console.log(`[pay] webhook ${event?.event || 'event'} -> ${reference} is ${data.status}`);
+  }
+
+  // Always acknowledge, or Lenco will keep retrying.
+  res.json({ received: true });
 });
 
 export default r;

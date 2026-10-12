@@ -8,6 +8,30 @@ import { submitPayment } from '../../lib/payments.js';
 import { formatMoney } from '../../lib/format.js';
 import Spinner from '../../components/Spinner.jsx';
 import Icon from '../../components/Icon.jsx';
+import MobileMoneyPay from '../../components/MobileMoneyPay.jsx';
+
+/** Switch between paying by mobile money and by bank transfer. */
+function MethodTabs({ method, setMethod }) {
+  const tabs = [
+    { id: 'mobile_money', label: 'Mobile money', icon: 'phone' },
+    { id: 'bank_transfer', label: 'Bank transfer', icon: 'credit-card' }
+  ];
+  return (
+    <div className="flex gap-1 p-1 bg-ink-100 rounded-xl mb-6 max-w-sm">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => setMethod(t.id)}
+          className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
+            method === t.id ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-900'
+          }`}
+        >
+          <Icon name={t.icon} size={15} />{t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function PayCourse() {
   const { enrollmentId } = useParams();
@@ -16,6 +40,8 @@ export default function PayCourse() {
   const [enrollment, setEnrollment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Mobile money is the default in Zambia; bank transfer stays as it was.
+  const [method, setMethod] = useState('mobile_money');
   const [form, setForm] = useState({
     bankReference: '',
     depositorName: '',
@@ -70,10 +96,26 @@ export default function PayCourse() {
     }
   }
 
+  if (method === 'mobile_money') {
+    return (
+      <div className="max-w-xl mx-auto container-px py-10">
+        <h1 className="text-2xl font-display font-bold mb-1">Complete payment</h1>
+        <p className="text-gray-600 mb-6">{enrollment.courseTitle}</p>
+        <MethodTabs method={method} setMethod={setMethod} />
+        <MobileMoneyPay
+          enrollment={enrollment}
+          profile={profile}
+          onPaid={() => setTimeout(() => navigate('/payments'), 2500)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto container-px py-10">
       <h1 className="text-2xl font-display font-bold mb-1">Complete payment</h1>
       <p className="text-gray-600 mb-6">{enrollment.courseTitle}</p>
+      <MethodTabs method={method} setMethod={setMethod} />
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="card p-6">

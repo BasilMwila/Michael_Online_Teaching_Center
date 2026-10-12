@@ -13,6 +13,7 @@ import FileUploader from '../../components/FileUploader.jsx';
 import DocumentToLessons from '../../components/DocumentToLessons.jsx';
 import Icon from '../../components/Icon.jsx';
 import Spinner from '../../components/Spinner.jsx';
+import CourseShareLink from '../../components/CourseShareLink.jsx';
 
 export default function AdminCourseEditor() {
   const { courseId } = useParams();
@@ -54,6 +55,12 @@ export default function AdminCourseEditor() {
           {course.isPublished ? 'Unpublish' : 'Publish course'}
         </button>
       </div>
+
+      <section className="card p-4 mb-6">
+        <h2 className="font-semibold mb-1">Share this course</h2>
+        <p className="text-sm text-ink-600 mb-3">Use this link in your social posts and ads to send students directly to this course.</p>
+        <CourseShareLink courseId={courseId} isPublished={course.isPublished} />
+      </section>
 
       <div className="flex gap-1 border-b border-ink-100 mb-6">
         {[

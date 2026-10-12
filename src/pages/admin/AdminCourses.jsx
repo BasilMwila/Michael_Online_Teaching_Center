@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { listAllCourses, createCourse, deleteCourse } from '../../lib/courses.js';
 import { formatMoney } from '../../lib/format.js';
 import Spinner from '../../components/Spinner.jsx';
+import CourseShareLink from '../../components/CourseShareLink.jsx';
 import FileUploader from '../../components/FileUploader.jsx';
 import { categoryOptions } from '../../lib/categories.js';
 
@@ -62,7 +63,7 @@ export default function AdminCourses() {
       {items.length === 0 ? (
         <div className="card p-10 text-center text-gray-500">No courses yet. Create your first one.</div>
       ) : (
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
@@ -79,6 +80,9 @@ export default function AdminCourses() {
                   <td className="px-4 py-3">
                     <p className="font-medium">{c.title}</p>
                     <p className="text-xs text-gray-500">{c.category}</p>
+                    <div className="mt-3 min-w-[260px]">
+                      <CourseShareLink courseId={c.id} isPublished={c.isPublished} />
+                    </div>
                   </td>
                   <td className="px-4 py-3">{c.mode === 'live' ? 'Live' : 'Self-paced'}</td>
                   <td className="px-4 py-3">{formatMoney(c.priceCents, c.currency || 'USD')}</td>

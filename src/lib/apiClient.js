@@ -26,8 +26,9 @@ async function unwrap(res) {
   return data;
 }
 
-export async function apiGet(path) {
-  return unwrap(await fetch(`${BASE}${path}`));
+export async function apiGet(path, { auth = false } = {}) {
+  const headers = auth ? await authHeader() : undefined;
+  return unwrap(await fetch(`${BASE}${path}`, headers ? { headers } : undefined));
 }
 
 export async function apiPost(path, body) {

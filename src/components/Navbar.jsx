@@ -54,7 +54,7 @@ export default function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto container-px h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <img src="/logo-light.png" alt="ESA logo" className="h-11 w-auto" />
+          <img src="/logo-transparent.png" alt="ESA logo" className="h-11 w-auto" />
           <div className="hidden sm:block">
             <p className="font-display font-bold text-brand-900 leading-tight">Empire Skills</p>
             <p className="text-[10px] text-accent-600 leading-tight tracking-wider font-semibold uppercase">Never Stop Growing</p>

@@ -51,7 +51,7 @@ export default function Login() {
           </button>
         </form>
         <p className="text-sm text-center text-gray-600 mt-5">
-          New here? <Link to="/signup" className="text-brand-700 font-semibold">Create an account</Link>
+          New here? <Link to="/signup" state={location.state} className="text-brand-700 font-semibold">Create an account</Link>
         </p>
       </div>
     </div>

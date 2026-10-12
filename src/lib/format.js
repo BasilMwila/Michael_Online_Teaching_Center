@@ -12,6 +12,32 @@ export function formatMoney(amountCents, currency = 'USD') {
   }
 }
 
+// Lenco and mobile money settle in Kwacha, so prices held in another currency
+// need converting. The rate is configuration, never a guess — if it isn't set,
+// the UI says so rather than showing a wrong figure.
+export const USD_TO_ZMW = Number(import.meta.env.VITE_USD_TO_ZMW) || 0;
+
+export function hasKwachaRate(currency = 'USD') {
+  return currency === 'ZMW' || USD_TO_ZMW > 0;
+}
+
+/** Amount in Kwacha ngwee (hundredths), or null if we can't convert safely. */
+export function toKwachaCents(amountCents, currency = 'USD') {
+  if (amountCents == null) return null;
+  if (currency === 'ZMW') return amountCents;
+  if (!USD_TO_ZMW) return null;
+  return Math.round(amountCents * USD_TO_ZMW);
+}
+
+export function formatKwacha(amountCents, currency = 'USD') {
+  const zmw = toKwachaCents(amountCents, currency);
+  if (zmw == null) return '';
+  return `K${(zmw / 100).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+}
+
 export function formatDateTime(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);

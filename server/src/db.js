@@ -183,6 +183,33 @@ CREATE TABLE IF NOT EXISTS subscribers (
   subscribedAt TEXT
 );
 
+-- Mobile money collections through Lenco. This is the authoritative record of
+-- what was actually paid; the browser-side payment doc mirrors it for display.
+CREATE TABLE IF NOT EXISTS collections (
+  reference TEXT PRIMARY KEY,
+  lencoReference TEXT,
+  provider TEXT NOT NULL DEFAULT 'lenco',
+  firebaseUid TEXT,
+  studentEmail TEXT DEFAULT '',
+  enrollmentId TEXT,
+  courseId TEXT,
+  courseTitle TEXT DEFAULT '',
+  amount REAL NOT NULL,
+  currency TEXT DEFAULT 'ZMW',
+  phone TEXT DEFAULT '',
+  operator TEXT DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  reasonForFailure TEXT DEFAULT '',
+  settlementStatus TEXT DEFAULT '',
+  operatorTransactionId TEXT DEFAULT '',
+  raw TEXT DEFAULT '{}',
+  createdAt TEXT,
+  updatedAt TEXT,
+  completedAt TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_collections_user ON collections(firebaseUid);
+CREATE INDEX IF NOT EXISTS idx_collections_enrollment ON collections(enrollmentId);
+
 CREATE TABLE IF NOT EXISTS whatsappGroupMembers (
   id TEXT PRIMARY KEY,
   userId TEXT NOT NULL REFERENCES users(id),
@@ -213,6 +240,7 @@ const META = {
   testimonials: { bool: ['isPublished'], json: [] },
   subscribers: { bool: [], json: [] },
   whatsappGroupMembers: { bool: [], json: [] },
+  collections: { key: 'reference', bool: [], json: ['raw'] },
   counters: { bool: [], json: [] }
 };
 
@@ -257,24 +285,27 @@ export function insert(table, data) {
   const cols = Object.keys(row);
   db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`)
     .run(...cols.map((c) => row[c]));
-  return row.id;
+  return row[META[table].key || 'id'];
 }
 
 export function update(table, id, data) {
+  const key = META[table].key || 'id';
   const row = toRow(table, data);
-  delete row.id;
+  delete row[key];
   const cols = Object.keys(row);
   if (!cols.length) return;
-  db.prepare(`UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`)
+  db.prepare(`UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE ${key} = ?`)
     .run(...cols.map((c) => row[c]), id);
 }
 
 export function getById(table, id) {
-  return fromRow(table, db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id));
+  const key = META[table].key || 'id';
+  return fromRow(table, db.prepare(`SELECT * FROM ${table} WHERE ${key} = ?`).get(id));
 }
 
 export function remove(table, id) {
-  db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
+  const key = META[table].key || 'id';
+  db.prepare(`DELETE FROM ${table} WHERE ${key} = ?`).run(id);
 }
 
 export function tx(fn) {
