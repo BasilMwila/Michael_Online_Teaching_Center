@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { listPublishedCourses } from '../lib/courses.js';
-import { SERVICE_CATEGORIES, SERVICE_BLURBS } from '../lib/categories.js';
+import { SERVICE_CATEGORIES, SERVICE_BLURBS, canonicalCategory, matchesCategory } from '../lib/categories.js';
 import { formatMoney } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Spinner from '../components/Spinner.jsx';
@@ -29,7 +29,8 @@ export default function Courses() {
 
   // Always offer the standard services, plus anything a course already uses.
   const categories = useMemo(() => {
-    const used = courses ? courses.map((c) => c.category).filter(Boolean) : [];
+    // Collapse renamed categories so a service never appears twice in the list.
+    const used = courses ? courses.map((c) => canonicalCategory(c.category)).filter(Boolean) : [];
     return Array.from(new Set([...SERVICE_CATEGORIES, ...used]));
   }, [courses]);
 
@@ -37,7 +38,7 @@ export default function Courses() {
     if (!courses) return [];
     return courses.filter((c) => {
       if (mode !== 'all' && c.mode !== mode) return false;
-      if (category !== 'all' && c.category !== category) return false;
+      if (category !== 'all' && !matchesCategory(c.category, category)) return false;
       if (search && !`${c.title} ${c.description}`.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });

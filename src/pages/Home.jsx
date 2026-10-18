@@ -5,6 +5,7 @@ import { listPublishedTestimonials } from '../lib/testimonials.js';
 import { formatMoney } from '../lib/format.js';
 import { STUDENT_STORIES, VIDEO_STORIES, LESSON_FEEDBACK } from '../lib/studentStories.js';
 import Icon from '../components/Icon.jsx';
+import { SERVICES } from '../lib/services.js';
 import Spinner from '../components/Spinner.jsx';
 import { StudentStoryFull, VideoStory, FeedbackBubble } from '../components/StudentStory.jsx';
 
@@ -145,6 +146,50 @@ export default function Home() {
               <p className="mt-2 text-sm text-ink-600 leading-relaxed">{f.text}</p>
             </article>
           ))}
+        </div>
+      </section>
+
+      {/* SERVICES */}
+      <section className="mt-24 py-20 bg-ink-50 border-y border-ink-100">
+        <div className="max-w-7xl mx-auto container-px">
+          <div className="text-center mb-12">
+            <p className="text-sm font-semibold text-brand-600 uppercase tracking-wider">What we offer</p>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-display font-bold text-ink-900">Our services</h2>
+            <p className="mt-3 text-ink-600 max-w-2xl mx-auto">
+              Three specialist programmes alongside the main catalogue — each with its own page, tutors and schedule.
+            </p>
+          </div>
+          <div className="space-y-6">
+            {SERVICES.map((s) => (
+              <Link
+                key={s.slug}
+                to={`/${s.slug}`}
+                className="card card-hover overflow-hidden grid lg:grid-cols-12 group"
+              >
+                {/* Navy behind the banner so a tall text column reads as a frame
+                    rather than cropping the artwork. */}
+                <div className="lg:col-span-7 bg-brand-900 flex items-center">
+                  <img
+                    src={s.banner}
+                    alt={s.bannerAlt}
+                    width={1600}
+                    height={640}
+                    loading="lazy"
+                    className="w-full h-auto"
+                  />
+                </div>
+                <div className="lg:col-span-5 p-6 sm:p-8 flex flex-col justify-center">
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-ink-900 group-hover:text-brand-700 transition-colors">
+                    {s.title}
+                  </h3>
+                  <p className="mt-3 text-sm text-ink-600 leading-relaxed line-clamp-4">{s.lead}</p>
+                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
+                    Read more <Icon name="arrow-right" size={16} />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

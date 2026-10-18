@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import toast from 'react-hot-toast';
 import Icon from './Icon.jsx';
@@ -21,16 +21,10 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
 
-  // NavLink ignores the query string, so every service tab would light up at
-  // once on /courses. Decide the active tab from the category param instead.
-  const activeCategory = searchParams.get('category');
+  // Every tab now has a path of its own, so a plain prefix match is enough.
+  // Home has to be exact or it would match everything.
   function isLinkActive(link) {
-    if (link.category) {
-      if (location.pathname !== '/courses') return false;
-      return link.category === 'Courses' ? !activeCategory : activeCategory === link.category;
-    }
     return link.to === '/' ? location.pathname === '/' : location.pathname.startsWith(link.to);
   }
 

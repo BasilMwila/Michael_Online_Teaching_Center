@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Home from './pages/Home.jsx';
 import Courses from './pages/Courses.jsx';
 import CourseDetail from './pages/CourseDetail.jsx';
+import Service from './pages/Service.jsx';
+import { SERVICES } from './lib/services.js';
 import Testimonials from './pages/Testimonials.jsx';
 import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
@@ -37,6 +39,10 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:courseId" element={<CourseDetail />} />
+        {/* Each specialist service has its own page at its own URL. */}
+        {SERVICES.map((s) => (
+          <Route key={s.slug} path={`/${s.slug}`} element={<Service slug={s.slug} />} />
+        ))}
         <Route path="/testimonials" element={<Testimonials />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
