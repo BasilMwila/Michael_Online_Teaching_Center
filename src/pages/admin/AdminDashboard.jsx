@@ -6,6 +6,7 @@ import { listAllPayments, listPendingPayments } from '../../lib/payments.js';
 import { listAllSessions } from '../../lib/liveSessions.js';
 import { formatMoney, formatDateTime } from '../../lib/format.js';
 import Spinner from '../../components/Spinner.jsx';
+import AccessBackfillCard from '../../components/AccessBackfillCard.jsx';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -42,6 +43,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-display font-bold">Overview</h1>
+      <AccessBackfillCard />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total revenue" value={formatMoney(stats.revenueCents, 'USD')} accent />
         <StatCard label="Pending payments" value={stats.pendingPayments} link="/admin/payments" />

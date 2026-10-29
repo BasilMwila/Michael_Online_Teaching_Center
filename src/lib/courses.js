@@ -50,20 +50,42 @@ export async function getLesson(courseId, lessonId) {
   return { id: snap.id, ...snap.data() };
 }
 
-export async function createLesson(courseId, data) {
+/**
+ * A public, lightweight table of contents stored on the course itself: titles
+ * and durations only, no notes, no video, no quiz. Lesson documents are locked
+ * to students who have been granted access, so this is what lets a visitor
+ * still see what a course covers before they enrol.
+ */
+export async function refreshCourseOutline(courseId) {
+  const lessons = await listLessons(courseId);
+  await updateDoc(doc(db, 'courses', courseId), {
+    outline: lessons.map((l) => ({
+      title: l.title || '',
+      durationMinutes: l.durationMinutes || 0
+    })),
+    lessonCount: lessons.length
+  });
+}
+
+// Bulk importers pass refreshOutline:false and rebuild once at the end, rather
+// than re-reading every lesson after each one.
+export async function createLesson(courseId, data, { refreshOutline = true } = {}) {
   const ref = await addDoc(collection(db, 'courses', courseId, 'lessons'), {
     ...data,
     createdAt: serverTimestamp()
   });
+  if (refreshOutline) await refreshCourseOutline(courseId);
   return ref.id;
 }
 
-export async function updateLesson(courseId, lessonId, data) {
+export async function updateLesson(courseId, lessonId, data, { refreshOutline = true } = {}) {
   await updateDoc(doc(db, 'courses', courseId, 'lessons', lessonId), data);
+  if (refreshOutline) await refreshCourseOutline(courseId);
 }
 
-export async function deleteLesson(courseId, lessonId) {
+export async function deleteLesson(courseId, lessonId, { refreshOutline = true } = {}) {
   await deleteDoc(doc(db, 'courses', courseId, 'lessons', lessonId));
+  if (refreshOutline) await refreshCourseOutline(courseId);
 }
 
 /** All quizzes for a course, keyed by lessonId — avoids a read per lesson. */

@@ -6,6 +6,7 @@ import { db } from '../firebase.js';
 import { uploadToCloudinary } from './cloudinary.js';
 import { apiGet, apiPost } from './apiClient.js';
 import { activateEnrollment } from './enrollments.js';
+import { grantCourseAccess } from './courseAccess.js';
 
 export async function submitPayment({
   userId, studentId, courseId, courseTitle, enrollmentId,
@@ -126,6 +127,9 @@ export async function confirmPayment(payment, adminUid) {
   if (payment.enrollmentId) {
     await activateEnrollment(payment.enrollmentId);
   }
+  // The enrollment status drives the screens; this record is what the security
+  // rules check, and so is what actually unlocks the lesson documents.
+  await grantCourseAccess(payment.userId, payment.courseId, payment.enrollmentId);
 }
 
 export async function rejectPayment(paymentId, adminUid, reason) {

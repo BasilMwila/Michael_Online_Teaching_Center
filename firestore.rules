@@ -34,18 +34,42 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    // Course content is unlocked by an admin-written record per (student,
+    // course). Rules cannot run a query, so the document id is derived from the
+    // two ids and looked up by path.
+    function hasCourseAccess(courseId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/courseAccess/$(request.auth.uid + '_' + courseId));
+    }
+
+    // Temporary: proves hasCourseAccess resolves. This collection does not
+    // exist and nothing reads it; removed once the gate itself uses it.
+    match /__ruleCheck/{probeId} {
+      allow read: if hasCourseAccess(probeId);
+    }
+
+    // courseAccess — written only when an admin confirms a payment
+    match /courseAccess/{grantId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
     // courses — public read of published; admin full control
     match /courses/{courseId} {
       allow read: if resource.data.isPublished == true || isAdmin();
       allow write: if isAdmin();
 
+      // Lesson bodies, narration and video links: approved students only.
+      // The course document carries a public `outline` (titles and durations)
+      // so a visitor can still see what the course covers.
       match /lessons/{lessonId} {
-        allow read: if isSignedIn();
+        allow read: if isSignedIn(); // TIGHTENED IN STAGE 2, AFTER BACKFILL
         allow write: if isAdmin();
       }
 
+      // Quizzes carry their own correct answers, so they are gated too.
       match /quizzes/{quizId} {
-        allow read: if isSignedIn();
+        allow read: if isSignedIn(); // TIGHTENED IN STAGE 2, AFTER BACKFILL
         allow write: if isAdmin();
       }
     }

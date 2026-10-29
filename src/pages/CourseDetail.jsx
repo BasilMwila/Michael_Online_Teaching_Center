@@ -29,16 +29,25 @@ export default function CourseDetail() {
         const c = await getCourse(courseId);
         if (cancelled) return;
         setCourse(c);
-        // Lesson documents require authentication; the course itself is public.
+        // The curriculum list comes from the course's own public outline.
+        // Lesson documents themselves are readable only once access has been
+        // granted, so they can't be used to build a list for a visitor.
+        let outline = Array.isArray(c?.outline) ? c.outline : null;
+        if (!outline && firebaseUser) {
+          // A course saved before outlines existed: fall back to the lesson
+          // documents, which admins and enrolled students can still read.
+          outline = await listLessons(courseId).catch(() => []);
+        }
+        if (cancelled) return;
+        setLessons((outline || []).map((o, i) => ({
+          id: o.id || `outline-${i}`,
+          title: o.title,
+          durationMinutes: o.durationMinutes
+        })));
         if (c && firebaseUser) {
-          const ls = await listLessons(courseId);
+          const en = await getEnrollmentForCourse(firebaseUser.uid, courseId);
           if (cancelled) return;
-          setLessons(ls);
-          if (firebaseUser) {
-            const en = await getEnrollmentForCourse(firebaseUser.uid, courseId);
-            if (cancelled) return;
-            setEnrollment(en);
-          }
+          setEnrollment(en);
         }
       } catch (err) {
         if (!cancelled && err.code !== 'permission-denied') toast.error('Could not load course details. Please refresh to try again.');

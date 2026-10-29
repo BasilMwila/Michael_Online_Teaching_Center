@@ -1,7 +1,7 @@
 // Upload a lecture document and turn the AI's outline into course lessons.
 
 import { apiGet, apiPost, apiUpload } from './apiClient.js';
-import { createLesson, upsertQuiz } from './courses.js';
+import { createLesson, upsertQuiz, refreshCourseOutline } from './courses.js';
 
 /** Whether the server has the AI import configured (key + admin allowlist). */
 export function getAiStatus() {
@@ -63,7 +63,7 @@ export async function saveLessonsToCourse(courseId, lessons, onProgress) {
       videoIsUpload: false,
       resources: [],
       source: 'ai-import'
-    });
+    }, { refreshOutline: false });
 
     // The lesson's quiz is what gates progress to the next lesson.
     if (l.quiz?.questions?.length) {
@@ -78,6 +78,8 @@ export async function saveLessonsToCourse(courseId, lessons, onProgress) {
     created.push(id);
     onProgress?.(i + 1, lessons.length);
   }
+  // One rebuild for the whole import rather than one per lesson.
+  await refreshCourseOutline(courseId);
   return created;
 }
 

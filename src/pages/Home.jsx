@@ -69,10 +69,10 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="relative hidden lg:block animate-fade-in">
+          <div className="relative animate-fade-in mt-4 lg:mt-0">
             <div className="relative max-w-md mx-auto">
               {/* Floating accent card */}
-              <div className="absolute -bottom-6 -right-6 z-10 card p-4 w-64 shadow-glow text-ink-900 animate-float" style={{ animationDelay: '1.2s' }}>
+              <div className="hidden lg:block absolute -bottom-6 -right-6 z-10 card p-4 w-64 shadow-glow text-ink-900 animate-float" style={{ animationDelay: '1.2s' }}>
                 <div className="flex items-center gap-3">
                   <div className="icon-tile bg-accent-100 text-accent-600">
                     <Icon name="users" size={22} />

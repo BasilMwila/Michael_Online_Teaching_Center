@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // users — each user reads/writes their own profile; admins can read all
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.role == 'student'
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if (isOwner(userId)
+        && !('role' in request.resource.data.diff(resource.data).affectedKeys()))
+        || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // counters — sequential student ID issuance; clients use a transaction to read+increment
+    match /counters/{counterId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // courses — public read of published; admin full control
+    match /courses/{courseId} {
+      allow read: if resource.data.isPublished == true || isAdmin();
+      allow write: if isAdmin();
+
+      match /lessons/{lessonId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
+      }
+
+      match /quizzes/{quizId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
+      }
+    }
+
+    // enrollments — student reads own; admin reads all; student creates own (pending only)
+    match /enrollments/{enrollmentId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending_payment';
+      allow update: if isAdmin()
+        || (isOwner(resource.data.userId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['progressPercent', 'lastAccessedAt', 'completedLessons']));
+      allow delete: if isAdmin();
+    }
+
+    // payments — student creates own pending payment record; only admin updates status
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // quiz attempts — student writes own; admin reads all
+    match /quizAttempts/{attemptId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // live sessions — public read; admin write
+    match /liveSessions/{sessionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // bookings — student creates own; admin manages
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || isOwner(resource.data.userId);
+    }
+
+    // testimonials — public read of published; signed-in users can submit; admin moderates
+    match /testimonials/{testimonialId} {
+      allow read: if resource.data.isPublished == true || isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.isPublished == false;
+      allow update, delete: if isAdmin();
+    }
+
+    // chat logs — chatbot writes user/bot messages (signed-in only); admin reads all
+    match /chatMessages/{messageId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // newsletter subscribers — anyone can subscribe; admin reads list
+    match /subscribers/{subId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['email', 'subscribedAt'])
+        && request.resource.data.email is string;
+      allow update, delete: if isAdmin();
+    }
+
+    // whatsappGroupMembers — admin only
+    match /whatsappGroupMembers/{memberId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+  }
+}
