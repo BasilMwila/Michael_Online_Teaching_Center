@@ -3,6 +3,7 @@ import {
   query, orderBy, serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
+import { normalizeFields } from './formFields.js';
 
 /**
  * A registration link that belongs to the admin who generated it.
@@ -45,7 +46,7 @@ export async function getRegistrationLink(code) {
  * Generate a link owned by this admin. Retries on the (vanishingly unlikely)
  * chance of a code collision rather than silently overwriting someone's link.
  */
-export async function createRegistrationLink({ ownerId, ownerName, channel = '', courseId = '', courseTitle = '' }) {
+export async function createRegistrationLink({ ownerId, ownerName, channel = '', courseId = '', courseTitle = '', fields = [] }) {
   if (!ownerId) throw new Error('A registration link needs an owner.');
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -61,6 +62,9 @@ export async function createRegistrationLink({ ownerId, ownerName, channel = '',
       channel,
       courseId,
       courseTitle,
+      // Extra questions this particular link should ask, on top of the
+      // standard ones every registration form has.
+      fields: normalizeFields(fields),
       active: true,
       createdAt: serverTimestamp()
     };

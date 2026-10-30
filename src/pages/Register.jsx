@@ -8,6 +8,7 @@ import {
   HEAR_ABOUT_OPTIONS, STUDENT_TYPES, buildIntake, sourceFromSlug
 } from '../lib/intake.js';
 import { getRegistrationLink } from '../lib/registrationLinks.js';
+import { blankAnswers, collectCustomAnswers, firstMissingAnswer } from '../lib/formFields.js';
 import Icon from '../components/Icon.jsx';
 import Spinner from '../components/Spinner.jsx';
 
@@ -68,7 +69,8 @@ export default function Register() {
     heardAboutNote: '',
     password: '',
     confirm: '',
-    subscribe: true
+    subscribe: true,
+    custom: {}
   });
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
@@ -93,6 +95,11 @@ export default function Register() {
     }));
   }, [profile?.uid]);
 
+  useEffect(() => {
+    if (!link?.fields?.length) return;
+    setForm((s) => ({ ...s, custom: { ...blankAnswers(link.fields), ...s.custom } }));
+  }, [link?.code]);
+
   // The channel is known either from ?src= or from the link once it resolves.
   // It only ever fills a blank answer — the visitor's own choice always wins.
   useEffect(() => {
@@ -102,6 +109,10 @@ export default function Register() {
 
   function update(field, value) {
     setForm((s) => ({ ...s, [field]: value }));
+  }
+
+  function updateCustom(id, value) {
+    setForm((s) => ({ ...s, custom: { ...s.custom, [id]: value } }));
   }
 
   function toggleInterest(name) {
@@ -121,6 +132,11 @@ export default function Register() {
       toast.error('Please tell us whether you are a returning or first-time student');
       return;
     }
+    const missing = firstMissingAnswer(link?.fields, form.custom);
+    if (missing) {
+      toast.error(`Please answer: ${missing.label}`);
+      return;
+    }
     if (!firebaseUser) {
       if (form.password !== form.confirm) {
         toast.error('Passwords do not match');
@@ -135,7 +151,11 @@ export default function Register() {
     // A withdrawn link still works, but stops earning its owner the credit.
     const creditLink = link?.active ? link : null;
     const intake = {
-      ...buildIntake(form, { campaignSource, link: creditLink }),
+      ...buildIntake(form, {
+        campaignSource,
+        link: creditLink,
+        custom: collectCustomAnswers(link?.fields, form.custom)
+      }),
       submittedAt: serverTimestamp()
     };
     setBusy(true);
@@ -192,12 +212,16 @@ export default function Register() {
             </p>
           )}
           <p className="text-ink-600 mt-3">
-            Pick the course you want and apply for it. A member of the team confirms your payment,
-            and the lessons unlock as soon as it is approved.
+            {link?.courseTitle
+              ? `Next, apply for ${link.courseTitle} and send your payment. A member of the team confirms it, and the lessons unlock as soon as it is approved.`
+              : 'Pick the course you want and apply for it. A member of the team confirms your payment, and the lessons unlock as soon as it is approved.'}
           </p>
           <div className="mt-7 flex flex-wrap gap-3 justify-center">
             <Link to={next || '/courses'} className="btn btn-primary">
-              {next ? 'Continue' : 'Browse courses'} <Icon name="arrow-right" size={16} />
+              {link?.courseTitle
+                ? `Go to ${link.courseTitle}`
+                : next ? 'Continue' : 'Browse courses'}
+              <Icon name="arrow-right" size={16} />
             </Link>
             <Link to="/dashboard" className="btn btn-ghost">Go to my dashboard</Link>
           </div>
@@ -217,6 +241,12 @@ export default function Register() {
           {firebaseUser
             ? 'Fill this in so we can match you to the right course. Your account stays as it is.'
             : 'Tell us a little about yourself and we will create your student account as you go.'}
+          {link?.courseTitle && (
+            <>
+              {' '}You are registering your interest in{' '}
+              <strong className="font-semibold text-ink-900">{link.courseTitle}</strong>.
+            </>
+          )}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -320,6 +350,59 @@ export default function Register() {
                 className="input mt-2" placeholder="Where did you hear about us?" />
             )}
           </div>
+
+          {/* Questions this particular link asks, in the order the admin set. */}
+          {link?.fields?.length > 0 && (
+            <div className="space-y-5 pt-4 border-t border-ink-100">
+              {link.fields.map((f) => (
+                <div key={f.id}>
+                  {f.type === 'checkbox' ? (
+                    <label className="flex items-start gap-2 text-sm text-ink-700">
+                      <input
+                        type="checkbox"
+                        checked={!!form.custom[f.id]}
+                        onChange={(e) => updateCustom(f.id, e.target.checked)}
+                        className="mt-1 w-4 h-4 text-brand-600 rounded border-gray-300 focus:ring-brand-500"
+                      />
+                      {f.label}
+                    </label>
+                  ) : (
+                    <>
+                      <label className="label">
+                        {f.label}
+                        {!f.required && <span className="font-normal text-ink-400"> (optional)</span>}
+                      </label>
+                      {f.type === 'textarea' && (
+                        <textarea
+                          rows={3}
+                          value={form.custom[f.id] || ''}
+                          onChange={(e) => updateCustom(f.id, e.target.value)}
+                          className="input"
+                        />
+                      )}
+                      {f.type === 'select' && (
+                        <select
+                          value={form.custom[f.id] || ''}
+                          onChange={(e) => updateCustom(f.id, e.target.value)}
+                          className="input"
+                        >
+                          <option value="">Choose one…</option>
+                          {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      )}
+                      {f.type === 'text' && (
+                        <input
+                          value={form.custom[f.id] || ''}
+                          onChange={(e) => updateCustom(f.id, e.target.value)}
+                          className="input"
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {!firebaseUser && (
             <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-ink-100">

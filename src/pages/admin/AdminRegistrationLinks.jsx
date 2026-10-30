@@ -8,7 +8,9 @@ import {
   createRegistrationLink, listAllRegistrationLinks, registrationLinkUrl,
   setLinkActive, deleteRegistrationLink, countRegistrationsByCode
 } from '../../lib/registrationLinks.js';
+import { describeFieldProblem, normalizeFields } from '../../lib/formFields.js';
 import { formatDateTime } from '../../lib/format.js';
+import FormFieldBuilder from '../../components/FormFieldBuilder.jsx';
 import Icon from '../../components/Icon.jsx';
 import Spinner from '../../components/Spinner.jsx';
 
@@ -24,6 +26,7 @@ export default function AdminRegistrationLinks() {
   const [courses, setCourses] = useState([]);
   const [channel, setChannel] = useState(CAMPAIGN_SOURCES[0]);
   const [courseId, setCourseId] = useState('');
+  const [fields, setFields] = useState([]);
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
@@ -45,6 +48,15 @@ export default function AdminRegistrationLinks() {
   const theirs = (links || []).filter((l) => l.ownerId !== firebaseUser?.uid);
 
   async function generate() {
+    if (!courseId) {
+      toast.error('Choose the course this link is for');
+      return;
+    }
+    const problem = describeFieldProblem(fields);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
     setBusy(true);
     try {
       const course = courses.find((c) => c.id === courseId);
@@ -53,9 +65,12 @@ export default function AdminRegistrationLinks() {
         ownerName: profile?.fullName || profile?.email || 'Empire Skills Academy',
         channel,
         courseId,
-        courseTitle: course?.title || ''
+        courseTitle: course?.title || '',
+        fields
       });
       await copy(registrationLinkUrl(link.code), 'Your new link is copied and ready to paste');
+      // The questions belong to the link that was just made, not to the next one.
+      setFields([]);
       await refresh();
     } catch (err) {
       toast.error(err.message || 'Could not generate a link');
@@ -97,13 +112,13 @@ export default function AdminRegistrationLinks() {
       <div className="mb-6">
         <h1 className="text-2xl font-display font-bold">Registration links</h1>
         <p className="text-sm text-ink-500 mt-0.5">
-          Generate a link of your own, post it, and everyone who registers through it is credited to you.
+          Generate a link for a course, post it, and everyone who registers through it is credited to you.
         </p>
       </div>
 
       {/* GENERATE */}
       <div className="card p-5 mb-8">
-        <h2 className="font-semibold text-ink-900 mb-4">Generate a new link</h2>
+        <h2 className="font-semibold text-ink-900 mb-4">Generate a link for a course</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] gap-3 items-end">
           <div>
             <label className="label">Where are you posting it?</label>
@@ -113,19 +128,36 @@ export default function AdminRegistrationLinks() {
             </select>
           </div>
           <div>
-            <label className="label">Send them to a course afterwards</label>
+            <label className="label">Which course is this link for?</label>
             <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="input">
-              <option value="">The course catalogue</option>
+              <option value="">Choose a course…</option>
               {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
-          <button onClick={generate} disabled={busy} className="btn-primary whitespace-nowrap">
+        </div>
+
+        <div className="mt-6 pt-5 border-t border-ink-100">
+          <h3 className="font-semibold text-ink-900 text-sm">
+            Extra questions on this link&rsquo;s form
+            {normalizeFields(fields).length > 0 && (
+              <span className="text-ink-400 font-normal"> ({normalizeFields(fields).length})</span>
+            )}
+          </h3>
+          <p className="text-xs text-ink-500 mt-1 mb-4">
+            Only people who open this link are asked them. Other links are unaffected.
+          </p>
+          <FormFieldBuilder fields={fields} onChange={setFields} />
+        </div>
+
+        <div className="mt-5 pt-5 border-t border-ink-100">
+          <button onClick={generate} disabled={busy || !courseId} className="btn-primary whitespace-nowrap">
             {busy ? 'Generating…' : 'Generate link'}
           </button>
         </div>
         <p className="text-xs text-ink-500 mt-3">
-          Generate a separate link for each post or platform and you can see which one is working.
-          The link is copied to your clipboard as soon as it is made.
+          Every link is for one course: whoever opens it registers and is taken straight to that
+          course. Generate a separate link per course and per platform and you can see which post is
+          working. The link is copied to your clipboard as soon as it is made.
         </p>
       </div>
 
@@ -149,7 +181,8 @@ export default function AdminRegistrationLinks() {
                     {!l.active && <span className="badge bg-amber-100 text-amber-800">withdrawn</span>}
                   </div>
                   <p className="text-xs text-ink-500 mt-1">
-                    {l.courseTitle ? `Lands on ${l.courseTitle}` : 'Lands on the course catalogue'}
+                    {l.courseTitle ? `For ${l.courseTitle}` : 'No course — lands on the catalogue'}
+                    {l.fields?.length ? ` · ${l.fields.length} extra question${l.fields.length > 1 ? 's' : ''}` : ''}
                     {' · '}made {formatDateTime(l.createdAt)}
                   </p>
                 </div>

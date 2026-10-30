@@ -118,6 +118,16 @@ export const LESSON_FEEDBACK = [
       'The tutor was very understanding, patient and clear. His lectures not only prepared me for the IELTS exam but also helped me to improve on my everyday language. I managed to score an overall score of band 6.5, which is beyond the required target.'
   },
   {
+    id: 'shelton-hachalinga',
+    name: 'Shelton Hachalinga',
+    country: 'Zambia',
+    hashtag: '#IELTS Lessons: UKVI',
+    graphic: '/feedback/shelton-hachalinga.jpg',
+    rating: 5,
+    quote:
+      'The lesson was well organized, easy to follow and understand. I exceeded the required goal and target.'
+  },
+  {
     id: 'sandro-italy',
     name: 'Sandro',
     country: 'Italy',

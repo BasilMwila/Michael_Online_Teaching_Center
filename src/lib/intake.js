@@ -62,12 +62,15 @@ export function sourceFromSlug(slug) {
  * referred them is copied in rather than left as a lookup, so the credit
  * survives the link being turned off or deleted.
  */
-export function buildIntake(form, { campaignSource = '', link = null } = {}) {
+export function buildIntake(form, { campaignSource = '', link = null, custom = [] } = {}) {
   const trim = (v) => String(v || '').trim();
   return {
     ref: link?.code || '',
     referrerId: link?.ownerId || '',
     referrerName: link?.ownerName || '',
+    // Answers to the extra questions this link asked, stored with their
+    // question text so they can be read back without the link.
+    custom: custom || [],
     occupation: trim(form.occupation),
     professionalArea: trim(form.professionalArea),
     otherInterests: (form.otherInterests || []).filter(Boolean),
@@ -97,6 +100,11 @@ export function intakeRows(intake) {
     ? `${intake.referrerName} (${intake.ref})`
     : intake.referrerName || intake.ref;
 
+  // The link's own questions come after the standard ones, in the order asked.
+  const extra = (intake.custom || [])
+    .filter((c) => c && c.label && c.value)
+    .map((c) => [c.label, c.value]);
+
   return [
     ['Current occupation', intake.occupation],
     ['Professional area of study', intake.professionalArea],
@@ -104,6 +112,7 @@ export function intakeRows(intake) {
     ['Student', intake.studentType],
     ['Heard about us via', heard],
     ['Registered through', referred],
-    ['Campaign link', intake.campaignSource]
+    ['Campaign link', intake.campaignSource],
+    ...extra
   ].filter(([, value]) => !!value);
 }
