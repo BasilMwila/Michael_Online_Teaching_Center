@@ -37,7 +37,8 @@ export default function AdminUsers() {
 
   if (!items) return <Spinner />;
   const filtered = search
-    ? items.filter((u) => `${u.email} ${u.fullName} ${u.studentId}`.toLowerCase().includes(search.toLowerCase()))
+    ? items.filter((u) => `${u.email} ${u.fullName} ${u.studentId} ${u.intake?.occupation || ''} ${u.intake?.professionalArea || ''} ${u.intake?.heardAbout || ''} ${u.intake?.campaignSource || ''} ${u.intake?.referrerName || ''} ${u.intake?.ref || ''}`
+        .toLowerCase().includes(search.toLowerCase()))
     : items;
 
   return (
@@ -51,7 +52,7 @@ export default function AdminUsers() {
         </div>
         <input
           type="search"
-          placeholder="Search…"
+          placeholder="Search name, ID, occupation, source…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input max-w-xs"
@@ -87,6 +88,11 @@ export default function AdminUsers() {
                     <Link to={`/admin/users/${u.uid}`} className="hover:text-brand-700">
                       {u.fullName || '—'}
                     </Link>
+                    {(u.intake?.referrerName || u.intake?.heardAbout) && (
+                      <p className="text-xs font-normal text-ink-400 mt-0.5">
+                        via {[u.intake.referrerName, u.intake.heardAbout].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
                   </td>
                   <td className="px-3 py-3">{u.email}</td>
                   <td className="px-3 py-3">

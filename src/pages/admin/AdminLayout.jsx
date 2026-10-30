@@ -7,6 +7,7 @@ const links = [
   { to: '/admin/payments', label: 'Payments', icon: 'credit-card' },
   { to: '/admin/live-sessions', label: 'Live sessions', icon: 'video' },
   { to: '/admin/users', label: 'Users', icon: 'users' },
+  { to: '/admin/links', label: 'Registration links', icon: 'send' },
   { to: '/admin/testimonials', label: 'Testimonials', icon: 'star' },
   { to: '/admin/whatsapp', label: 'WhatsApp groups', icon: 'whatsapp' }
 ];

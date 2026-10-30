@@ -5,6 +5,7 @@ import { listEnrollmentsForUser } from '../../lib/enrollments.js';
 import { listLessons } from '../../lib/courses.js';
 import { listMyAttempts } from '../../lib/quizzes.js';
 import { formatMoney, formatDateTime, statusBadgeClass } from '../../lib/format.js';
+import { intakeRows } from '../../lib/intake.js';
 import Icon from '../../components/Icon.jsx';
 import Spinner from '../../components/Spinner.jsx';
 
@@ -80,6 +81,26 @@ export default function AdminStudentDetail() {
           <Stat label="Quiz attempts" value={attempts.length} />
         </div>
       </div>
+
+      {/* WHAT THEY TOLD US WHEN THEY REGISTERED */}
+      {intakeRows(student?.intake).length > 0 && (
+        <div className="card p-6 mb-6">
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+            <h2 className="text-lg font-display font-bold text-ink-900">Registration answers</h2>
+            {student.intake.submittedAt && (
+              <span className="text-xs text-ink-500">{formatDateTime(student.intake.submittedAt)}</span>
+            )}
+          </div>
+          <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+            {intakeRows(student.intake).map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-xs uppercase tracking-wide text-ink-500">{label}</dt>
+                <dd className="text-ink-900 mt-0.5">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
 
       {/* COURSES */}
       <h2 className="text-lg font-display font-bold text-ink-900 mb-3">Courses</h2>

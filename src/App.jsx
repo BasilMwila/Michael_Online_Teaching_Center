@@ -11,6 +11,7 @@ import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
+import Register from './pages/Register.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
 import Dashboard from './pages/student/Dashboard.jsx';
@@ -27,6 +28,7 @@ import AdminCourseEditor from './pages/admin/AdminCourseEditor.jsx';
 import AdminPayments from './pages/admin/AdminPayments.jsx';
 import AdminLiveSessions from './pages/admin/AdminLiveSessions.jsx';
 import AdminUsers from './pages/admin/AdminUsers.jsx';
+import AdminRegistrationLinks from './pages/admin/AdminRegistrationLinks.jsx';
 import AdminStudentDetail from './pages/admin/AdminStudentDetail.jsx';
 import AdminTestimonials from './pages/admin/AdminTestimonials.jsx';
 import AdminWhatsapp from './pages/admin/AdminWhatsapp.jsx';
@@ -48,6 +50,14 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        {/* Where social-media campaign links land: the same account
+            creation as /signup, plus the intake questions. /join is the
+            short form, for posts where the link is typed out. */}
+        <Route path="/register" element={<Register />} />
+        <Route path="/join" element={<Register />} />
+        {/* /r/<CODE> is the link an admin generates for their own posts: the
+            same form, with the registration credited to them. */}
+        <Route path="/r/:code" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route element={<ProtectedRoute />}>
@@ -71,6 +81,7 @@ export default function App() {
             <Route path="payments" element={<AdminPayments />} />
             <Route path="live-sessions" element={<AdminLiveSessions />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="links" element={<AdminRegistrationLinks />} />
             <Route path="users/:uid" element={<AdminStudentDetail />} />
             <Route path="testimonials" element={<AdminTestimonials />} />
             <Route path="whatsapp" element={<AdminWhatsapp />} />

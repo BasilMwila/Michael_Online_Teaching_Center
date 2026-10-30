@@ -28,6 +28,18 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // registrationLinks — one per link an admin generates for their own posts.
+    // The document id is the code in the URL, so a visitor opening the link can
+    // read exactly that one document to see who invited them and which course
+    // they are being sent to. It holds no contact details and grants nothing.
+    match /registrationLinks/{code} {
+      allow read: if true;
+      // An admin can only ever generate a link under their own name, so
+      // registrations cannot be credited to someone else.
+      allow create: if isAdmin() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     // counters — sequential student ID issuance; clients use a transaction to read+increment
     match /counters/{counterId} {
       allow read: if isSignedIn();

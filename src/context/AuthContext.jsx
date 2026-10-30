@@ -70,11 +70,19 @@ export function AuthProvider({ children }) {
     return unsub;
   }, []);
 
-  async function signup({ email, password, fullName, phone, subscribeUpdates }) {
+  /**
+   * `extra` is merged into the profile document, for forms that ask more than
+   * the plain signup page does (the campaign registration form sends the
+   * answers to its questions as `intake`). It cannot smuggle in a role: the
+   * fixed fields below are applied after it, and the rules require
+   * role == 'student' on create regardless.
+   */
+  async function signup({ email, password, fullName, phone, subscribeUpdates, extra }) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName: fullName });
     const studentId = await issueStudentId();
     const userDoc = {
+      ...(extra || {}),
       email,
       fullName,
       phone: phone || '',
@@ -86,6 +94,21 @@ export function AuthProvider({ children }) {
     await setDoc(doc(db, 'users', cred.user.uid), userDoc);
     setProfile({ uid: cred.user.uid, ...userDoc });
     return { uid: cred.user.uid, studentId };
+  }
+
+  /**
+   * Update the signed-in user's own profile. `role` must never be in `fields` —
+   * the rules reject an owner-written change to it, so the whole write fails.
+   * The document is read back afterwards because `fields` may contain server
+   * sentinels (serverTimestamp) that only resolve to a value on the server.
+   */
+  async function saveMyProfile(fields) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('You are not signed in.');
+    const ref = doc(db, 'users', user.uid);
+    await updateDoc(ref, fields);
+    const snap = await getDoc(ref);
+    if (snap.exists()) setProfile({ uid: user.uid, ...snap.data() });
   }
 
   async function login(email, password) {
@@ -127,6 +150,7 @@ export function AuthProvider({ children }) {
     isAdmin: profile?.role === 'admin',
     mustChangePassword: !!profile?.mustChangePassword,
     signup,
+    saveMyProfile,
     login,
     logout,
     resetPassword,
